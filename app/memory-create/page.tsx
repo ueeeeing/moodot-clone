@@ -11,12 +11,9 @@ import {
   ChevronRight,
   ImagePlus,
   MapPinned,
-  Home,
-  SquarePen,
-  Sparkles,
-  UserRound,
 } from "lucide-react"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
+import { BottomNavigation } from "@/components/moodot/bottom-navigation"
 
 declare global {
   interface Window {
@@ -567,22 +564,7 @@ export default function CreatePage() {
         </section>
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 z-50 rounded-t-[2rem] bg-white/80 px-8 pb-8 pt-4 backdrop-blur-md shadow-[0px_-4px_24px_rgba(43,52,54,0.04)]">
-        <div className="mx-auto flex max-w-[375px] items-center justify-around">
-          <a className="text-mb-dark/40" href="#">
-            <Home className="h-5 w-5" />
-          </a>
-          <a className="text-mb-primary" href="#">
-            <SquarePen className="h-5 w-5" />
-          </a>
-          <a className="text-mb-dark/40" href="#">
-            <Sparkles className="h-5 w-5" />
-          </a>
-          <a className="text-mb-dark/40" href="#">
-            <UserRound className="h-5 w-5" />
-          </a>
-        </div>
-      </nav>
+      <BottomNavigation />
 
       {isMapOpen ? (
         <div className="fixed inset-0 z-[60] bg-black/35 px-5 py-8">
