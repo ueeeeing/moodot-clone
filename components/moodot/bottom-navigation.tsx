@@ -1,18 +1,23 @@
 "use client"
 
-import { useState } from "react"
+import { useRouter, usePathname } from "next/navigation"
 import { Home, BookOpen, Lightbulb, Leaf } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const navItems = [
-  { id: "home", label: "홈", icon: Home },
-  { id: "journal", label: "기록", icon: BookOpen },
-  { id: "insights", label: "인사이트", icon: Lightbulb },
-  { id: "meditation", label: "명상", icon: Leaf },
+  { id: "home", label: "홈", icon: Home, path: "/" },
+  { id: "journal", label: "기록", icon: BookOpen, path: "/records" },
+  { id: "insights", label: "인사이트", icon: Lightbulb, path: null },
+  { id: "meditation", label: "명상", icon: Leaf, path: null },
 ]
 
 export function BottomNavigation() {
-  const [activeTab, setActiveTab] = useState("home")
+  const router = useRouter()
+  const pathname = usePathname()
+
+  const activeTab =
+    pathname === "/records" ? "journal" :
+    pathname === "/" ? "home" : ""
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 backdrop-blur-xl bg-mb-bg/90 border-t border-mb-unselected/50 rounded-t-3xl shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
@@ -25,7 +30,9 @@ export function BottomNavigation() {
             return (
               <button
                 key={item.id}
-                onClick={() => setActiveTab(item.id)}
+                onClick={() => {
+                  if (item.path) router.push(item.path)
+                }}
                 className={cn(
                   "flex flex-col items-center gap-1 px-4 py-2 rounded-2xl transition-all duration-200",
                   "focus:outline-none focus-visible:ring-2 focus-visible:ring-mb-primary focus-visible:ring-offset-2",
