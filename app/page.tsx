@@ -1,6 +1,5 @@
 import { TopAppBar } from "@/components/moodot/top-app-bar"
 import { WelcomeHeader } from "@/components/moodot/welcome-header"
-import { MoodSelector } from "@/components/moodot/mood-selector"
 import { JournalEntry } from "@/components/moodot/journal-entry"
 import { AIInsight } from "@/components/moodot/ai-insight"
 import { RecentReflections } from "@/components/moodot/recent-reflections"
@@ -23,7 +22,6 @@ export default function MoodotHome() {
       {/* Main Content */}
       <main className="relative mx-auto max-w-[375px] px-5 pt-20 pb-32">
         <WelcomeHeader />
-        <MoodSelector />
         <JournalEntry />
         <AIInsight />
         <RecentReflections />

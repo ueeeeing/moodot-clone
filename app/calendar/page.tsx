@@ -2,7 +2,7 @@ import { MemoriesListView } from "@/components/moodot/memories-list-view"
 import { TopAppBar } from "@/components/moodot/top-app-bar"
 import { BottomNavigation } from "@/components/moodot/bottom-navigation"
 
-export default function RecordsPage() {
+export default function CalendarPage() {
   return (
     <div className="min-h-screen bg-mb-bg relative">
       <TopAppBar />

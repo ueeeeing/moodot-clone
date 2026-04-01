@@ -53,8 +53,9 @@ export function MoodSelector() {
             <button
               key={mood.id}
               onClick={() => setSelectedMood(mood.id)}
+              aria-label={mood.label}
               className={cn(
-                "flex flex-col items-center gap-2 transition-all duration-200",
+                "flex flex-col items-center transition-all duration-200",
                 "focus:outline-none focus-visible:ring-2 focus-visible:ring-mb-primary focus-visible:ring-offset-2 rounded-2xl"
               )}
             >
@@ -74,14 +75,6 @@ export function MoodSelector() {
                   }}
                 />
               </div>
-              <span
-                className={cn(
-                  "text-xs font-body font-medium transition-colors duration-200",
-                  isSelected ? "text-mb-dark" : "text-mb-muted"
-                )}
-              >
-                {mood.label}
-              </span>
             </button>
           )
         })}
