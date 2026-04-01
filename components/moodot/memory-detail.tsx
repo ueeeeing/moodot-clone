@@ -266,7 +266,7 @@ export function MemoryDetail({ id }: { id: number }) {
       <button
         type="button"
         onClick={() => router.push(`/memory/${memory.id}/edit`)}
-        className="flex w-full items-center justify-center gap-2 h-12 rounded-full bg-mb-unselected font-body text-sm font-semibold text-mb-dark/70 transition-all duration-200 hover:bg-mb-unselected/60 active:scale-[0.98]"
+        className="flex w-full items-center justify-center gap-2 h-14 rounded-full bg-transparent border border-mb-primary/30 font-heading text-[16px] font-semibold text-mb-primary transition-all duration-200 hover:bg-mb-primary/8 active:scale-[0.99]"
       >
         <Pencil className="w-4 h-4" />
         수정하기

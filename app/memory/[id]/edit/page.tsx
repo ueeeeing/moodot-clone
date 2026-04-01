@@ -450,7 +450,7 @@ export default function EditMemoryPage() {
           </button>
           <button type="button" onClick={() => void handleDelete()}
             disabled={isSaving}
-            className="flex w-full items-center justify-center gap-2 h-14 rounded-full bg-mb-unselected font-heading text-[16px] font-semibold text-mb-muted transition-all duration-200 hover:bg-mb-unselected/60 active:scale-[0.99] disabled:opacity-50">
+            className="flex w-full items-center justify-center gap-2 h-14 rounded-full bg-[#F8C8C8]/35 font-heading text-[16px] font-semibold text-[#A65E5E] transition-all duration-200 hover:bg-[#F8C8C8]/55 active:scale-[0.99] disabled:opacity-50">
             <Trash2 className="w-4 h-4" />
             기록 삭제
           </button>
