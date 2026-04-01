@@ -1,7 +1,8 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { Smile, Frown, CloudRain, Leaf, User, Users, MapPin } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { Smile, Frown, CloudRain, Leaf, User, Users, MapPin, Pencil } from "lucide-react"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 
 // --- Leaflet types (same as creation screen) ---
@@ -134,6 +135,7 @@ export function MemoryDetail({ id }: { id: number }) {
   const [memory, setMemory] = useState<MemoryRow | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState("")
+  const router = useRouter()
 
   useEffect(() => {
     let mounted = true
@@ -251,6 +253,16 @@ export function MemoryDetail({ id }: { id: number }) {
           )}
         </section>
       )}
+
+      {/* 수정 버튼 */}
+      <button
+        type="button"
+        onClick={() => router.push(`/memory/${memory.id}/edit`)}
+        className="mt-2 flex w-full items-center justify-center gap-2 h-12 rounded-full bg-mb-unselected font-body text-sm font-semibold text-mb-dark/70 transition-all duration-200 hover:bg-mb-unselected/80 active:scale-[0.98]"
+      >
+        <Pencil className="w-4 h-4" />
+        수정하기
+      </button>
     </div>
   )
 }
