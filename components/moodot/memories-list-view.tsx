@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Search, User, Users } from "lucide-react"
+import { Search, User, Users, Plus } from "lucide-react"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 
 type MemoryRow = {
@@ -87,7 +87,7 @@ export function MemoriesListView() {
 
   return (
     <section className="pt-6">
-      <div className="relative mb-6">
+      <div className="relative mb-4">
         <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-mb-muted" />
         <input
           type="text"
@@ -96,6 +96,19 @@ export function MemoriesListView() {
           placeholder="Search your memories..."
           className="h-14 w-full rounded-xl bg-mb-card pl-11 pr-4 font-body text-sm text-mb-dark outline-none transition-all duration-200 placeholder:text-mb-muted focus:ring-2 focus:ring-mb-accent-cyan/50"
         />
+      </div>
+
+      {/* 기록 남기기 버튼 */}
+      <div className="mb-6 flex justify-center">
+        <button
+          type="button"
+          onClick={() => router.push("/memory-create")}
+          className="flex items-center gap-2 h-11 rounded-full bg-gradient-to-br from-mb-primary to-mb-secondary font-heading text-[14px] font-semibold text-white shadow-[0px_6px_20px_rgba(124,196,216,0.3)] transition-transform duration-200 active:scale-95"
+          style={{ width: "80%" }}
+        >
+          <Plus className="w-4 h-4 flex-shrink-0 ml-4" />
+          <span className="flex-1 text-center pr-4">기록 남기기</span>
+        </button>
       </div>
 
       {isLoading ? (
