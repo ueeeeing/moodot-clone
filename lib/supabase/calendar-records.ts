@@ -27,20 +27,20 @@ function normalizeDate(dateValue: string | null) {
 export async function getCalendarRecords(): Promise<CalendarMoodRecord[]> {
   const memories = await getMemories()
 
-  return memories
-    .map((memory) => {
+  return memories.reduce<CalendarMoodRecord[]>((records, memory) => {
       const date = normalizeDate(memory.memory_at)
       const mood = memory.emotion_id ? emotionIdMap[memory.emotion_id] : null
 
       if (!date || !mood) {
-        return null
+        return records
       }
 
-      return {
+      records.push({
         date,
         mood,
         note: memory.text ?? memory.title ?? undefined,
-      } satisfies CalendarMoodRecord
-    })
-    .filter((record): record is CalendarMoodRecord => record !== null)
+      })
+
+      return records
+    }, [])
 }
