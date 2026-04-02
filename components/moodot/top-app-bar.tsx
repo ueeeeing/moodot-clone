@@ -11,7 +11,7 @@ export function TopAppBar() {
       <div className="mx-auto max-w-[375px] h-full px-5 flex items-center justify-between">
         {/* User Avatar */}
         <Avatar className="h-10 w-10 ring-2 ring-mb-accent-mint/40">
-          <AvatarImage src="/avatar-placeholder.jpg" alt="User avatar" />
+          <AvatarImage src="" alt="User avatar" />
           <AvatarFallback className="bg-gradient-to-b from-mb-accent via-mb-accent-mint to-mb-accent-cyan text-mb-dark font-heading font-semibold text-sm">
             S
           </AvatarFallback>
