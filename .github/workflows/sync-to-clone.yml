@@ -36,5 +36,5 @@ jobs:
           REMOTE_REPO="https://${{ secrets.CLONE_TOKEN }}@github.com/ueeeeing/moodot-clone.git"
           git remote add clone-target $REMOTE_REPO
 
-          # 4. 푸시!
-          git push clone-target develop --force
+          # 4. 푸시! (원본의 develop 내용을 클론의 main으로 덮어쓰기)
+          git push clone-target develop:main --force
