@@ -35,8 +35,6 @@ const moodConfig: Record<MoodType, { color: string; iconColor: string; icon: Luc
 
 const DAYS = ["일", "월", "화", "수", "목", "금", "토"]
 
-const parseDate = (dateStr: string) => new Date(`${dateStr}T12:00:00`)
-
 export function CalendarView() {
   const today = new Date()
   const [currentYear, setCurrentYear] = useState(today.getFullYear())

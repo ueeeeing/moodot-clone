@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { useEffect, useRef, useState } from "react"
 import {
   X,
@@ -494,10 +495,10 @@ export default function CreatePage() {
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="flex aspect-video w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[#AAB3B633] bg-[#EFF4F64D] transition-colors duration-200 hover:bg-[#EFF4F6]"
+            className="relative flex aspect-video w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[#AAB3B633] bg-[#EFF4F64D] transition-colors duration-200 hover:bg-[#EFF4F6]"
           >
             {imagePreviewUrl ? (
-              <img src={imagePreviewUrl} alt="선택한 사진 미리보기" className="h-full w-full rounded-xl object-cover" />
+              <Image src={imagePreviewUrl} alt="선택한 사진 미리보기" fill className="rounded-xl object-cover" unoptimized />
             ) : (
               <>
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-sm">
