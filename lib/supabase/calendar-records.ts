@@ -25,7 +25,16 @@ function normalizeDate(dateValue: string | null) {
 }
 
 export async function getCalendarRecords(): Promise<CalendarMoodRecord[]> {
-  const memories = await getMemories()
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseKey =
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY
+
+  if (!supabaseUrl || !supabaseKey) {
+    return []
+  }
+
+  const memories = await getMemories().catch(() => [])
 
   return memories.reduce<CalendarMoodRecord[]>((records, memory) => {
       const date = normalizeDate(memory.memory_at)
