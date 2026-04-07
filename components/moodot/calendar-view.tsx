@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { ChevronLeft, ChevronRight, Smile, Frown, CloudRain, Leaf, type LucideIcon } from "lucide-react"
+import { ChevronLeft, ChevronRight, Smile, Frown, CloudRain, Leaf, ArrowRight, type LucideIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 export type MoodType = "good" | "bad" | "sad" | "calm"
@@ -73,6 +73,15 @@ export function CalendarView({ records }: CalendarViewProps) {
   const daysInMonth = getDaysInMonth(currentYear, currentMonth)
   const firstDay = getFirstDayOfMonth(currentYear, currentMonth)
   const selectedRecord = selectedDate ? getMoodForDate(selectedDate) : null
+  const hasCurrentMonthRecords = records.some((record) => {
+    const [recordYear, recordMonth] = record.date.split("-")
+
+    return (
+      Number(recordYear) === currentYear &&
+      Number(recordMonth) === currentMonth + 1
+    )
+  })
+
   return (
     <section className="pt-6">
       {/* 헤더 */}
@@ -158,6 +167,12 @@ export function CalendarView({ records }: CalendarViewProps) {
         </div>
       </div>
 
+      {!hasCurrentMonthRecords && (
+        <p className="mt-4 rounded-2xl bg-white px-4 py-3 text-center text-sm text-mb-muted shadow-sm shadow-mb-dark/5">
+          이번 달 기록이 없어요.
+        </p>
+      )}
+
       {/* 무드 범례 */}
       <div className="flex justify-center gap-4 mt-4">
         {Object.entries(moodConfig).map(([key, val]) => {
@@ -198,10 +213,16 @@ export function CalendarView({ records }: CalendarViewProps) {
                   </span>
                 )
               })()}
-              <div>
-                <p className="text-xs font-semibold text-mb-dark">
-                  {moodConfig[selectedRecord.mood].label}
-                </p>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-semibold text-mb-dark">
+                    {moodConfig[selectedRecord.mood].label}
+                  </p>
+                  <span className="flex shrink-0 items-center gap-1 text-[11px] font-semibold text-mb-primary">
+                    상세 보기
+                    <ArrowRight className="h-3 w-3" />
+                  </span>
+                </div>
                 {selectedRecord.note && (
                   <p className="text-xs text-mb-muted mt-1">{selectedRecord.note}</p>
                 )}
