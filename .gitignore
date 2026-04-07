@@ -41,9 +41,13 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-<<<<<<< HEAD
+
 #claude
-=======
-#
->>>>>>> feat/memory-archives
 .claude/
+
+
+# python / AI service
+service/venv/
+**/__pycache__/
+**/*.pyc
+
