@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
-import Image from "next/image"
 import {
   ArrowLeft,
   Pencil,
@@ -16,6 +15,7 @@ import {
   type CollectionWithMemories,
   type MemoryInCollection,
 } from "@/lib/services/collection"
+import { SignedImage } from "@/components/moodot/signed-image"
 
 const EMOTION_COLOR_MAP: Record<number, string> = {
   1: "#FFE8B8",
@@ -115,12 +115,10 @@ function MemoryItem({ memory }: { memory: MemoryInCollection }) {
         {/* 이미지 (4:3) */}
         {memory.image_url && (
           <div className="relative mt-3 aspect-[4/3] w-full overflow-hidden rounded-xl">
-            <Image
-              src={memory.image_url}
+            <SignedImage
+              path={memory.image_url}
               alt={memory.title ?? "memory image"}
-              fill
-              className="object-cover"
-              sizes="335px"
+              className="absolute inset-0 w-full h-full object-cover"
             />
           </div>
         )}
@@ -239,13 +237,10 @@ export default function CollectionDetailPage() {
             {/* 커버 이미지: cover_memory?.image_url 기반 */}
             <div className="relative h-52 w-full overflow-hidden">
               {coverImageUrl ? (
-                <Image
-                  src={coverImageUrl}
+                <SignedImage
+                  path={coverImageUrl}
                   alt={collection.title}
-                  fill
-                  className="object-cover"
-                  sizes="375px"
-                  priority
+                  className="absolute inset-0 w-full h-full object-cover"
                 />
               ) : (
                 <div

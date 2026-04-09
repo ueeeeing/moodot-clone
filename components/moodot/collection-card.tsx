@@ -1,8 +1,8 @@
 "use client"
 
-import Image from "next/image"
 import { MapPin, Clock } from "lucide-react"
 import type { CollectionSummary } from "@/lib/services/collection"
+import { SignedImage } from "@/components/moodot/signed-image"
 
 const GRADIENT_PLACEHOLDERS = [
   "from-mb-accent via-mb-accent-mint to-mb-accent-cyan",
@@ -45,12 +45,10 @@ export function CollectionCard({ collection, onClick }: Props) {
       {/* 커버 이미지 영역 */}
       <div className="relative h-44 w-full overflow-hidden">
         {coverImageUrl ? (
-          <Image
-            src={coverImageUrl}
+          <SignedImage
+            path={coverImageUrl}
             alt={collection.title}
-            fill
-            className="object-cover"
-            sizes="375px"
+            className="absolute inset-0 w-full h-full object-cover"
           />
         ) : (
           <div className={`h-full w-full bg-gradient-to-br ${gradient}`} />

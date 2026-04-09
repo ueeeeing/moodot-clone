@@ -167,6 +167,13 @@ export async function createCollection(
 ): Promise<string> {
   const supabase = getSupabaseBrowserClient()
 
+  let { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    const { data, error: anonErr } = await supabase.auth.signInAnonymously()
+    if (anonErr || !data.user) throw new Error("인증에 실패했습니다.")
+    user = data.user
+  }
+
   const { data, error } = await supabase
     .from("collections")
     .insert({
@@ -176,6 +183,7 @@ export async function createCollection(
       start_date: input.start_date,
       end_date: input.end_date,
       cover_memory_id: input.cover_memory_id,
+      user_id: user.id,
     })
     .select("id")
     .single()

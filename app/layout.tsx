@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Plus_Jakarta_Sans, Manrope } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
+import { AuthInit } from '@/components/layout/auth-init'
 import './globals.css'
 
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -54,6 +55,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${plusJakartaSans.variable} ${manrope.variable} font-body antialiased`}>
+        <AuthInit />
         {children}
         <Analytics />
       </body>

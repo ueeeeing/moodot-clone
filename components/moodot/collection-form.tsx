@@ -12,6 +12,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { MemoryPicker } from "@/components/moodot/memory-picker"
+import { SignedImage } from "@/components/moodot/signed-image"
 import type { CollectionFormInput } from "@/lib/services/collection"
 import type { MemoryRow } from "@/lib/services/memory"
 
@@ -235,9 +236,8 @@ export function CollectionForm({
                           : "border-transparent opacity-70 hover:opacity-100"
                       )}
                     >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={m.image_url!}
+                      <SignedImage
+                        path={m.image_url!}
                         alt={m.title ?? "memory"}
                         className="h-full w-full object-cover"
                       />
