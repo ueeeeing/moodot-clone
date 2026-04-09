@@ -17,11 +17,10 @@ class InterventionStatus(Enum):
 
 
 class InterventionReason(Enum):
-    """개입 이유 (자주 사용하는 것들)"""
+    """개입 이유"""
     NO_RECENT_RECORD = "no_recent_record"
-    NEGATIVE_STREAK = "negative_streak"
-    POSITIVE_STREAK = "positive_streak"
-    SCHEDULE_OVERLOAD = "schedule_overload"
+    NEGATIVE_PATTERN = "negative_pattern"
+    POSITIVE_REINFORCEMENT = "positive_reinforcement"
 
 
 @dataclass

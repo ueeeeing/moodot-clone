@@ -5,7 +5,7 @@
 import logging
 from typing import List, Dict, Optional, Any
 from datetime import datetime, timedelta
-from supabase import AsyncClient
+
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +21,7 @@ EMOTION_CATEGORIES = {
 
 
 async def get_recent_emotions(
-    supabase: AsyncClient,
+    supabase,
     user_id: str = DEFAULT_USER_ID,
     days: int = 7,
     limit: int = 50
@@ -84,7 +84,7 @@ async def get_recent_emotions(
 
 
 async def get_days_since_last_record(
-    supabase: AsyncClient,
+    supabase,
     user_id: str = DEFAULT_USER_ID
 ) -> Optional[int]:
     """
@@ -125,7 +125,7 @@ async def get_days_since_last_record(
 
 
 async def get_consecutive_emotions(
-    supabase: AsyncClient,
+    supabase,
     user_id: str = DEFAULT_USER_ID,
     emotion_type: str = "negative",
     limit: int = 10
@@ -197,7 +197,7 @@ async def get_consecutive_emotions(
 
 
 async def get_emotion_statistics(
-    supabase: AsyncClient,
+    supabase,
     user_id: str = DEFAULT_USER_ID,
     days: int = 7
 ) -> Dict[str, Any]:
@@ -259,7 +259,7 @@ async def get_emotion_statistics(
 
 
 async def get_emotion_by_id(
-    supabase: AsyncClient,
+    supabase,
     emotion_id: int
 ) -> Optional[Dict[str, Any]]:
     """

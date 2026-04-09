@@ -1,7 +1,7 @@
 import { TopAppBar } from "@/components/moodot/top-app-bar"
 import { WelcomeHeader } from "@/components/moodot/welcome-header"
 import { JournalEntry } from "@/components/moodot/journal-entry"
-import { AIInsight } from "@/components/moodot/ai-insight"
+import { AIInsight } from "@/components/ai/ai-insight"
 import { RecentReflections } from "@/components/moodot/recent-reflections"
 import { BottomNavigation } from "@/components/moodot/bottom-navigation"
 
