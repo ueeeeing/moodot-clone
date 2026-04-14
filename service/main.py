@@ -319,11 +319,10 @@ async def handle_new_emotion(supabase, payload: Dict[str, Any]) -> None:
         if intervention_id:
             logger.info(f"✅ Intervention 생성: {intervention_id}")
             logger.info(f"   메시지: {message}")
+            await mark_as_processed(supabase, emotion['id'])
+            logger.info("✅ 처리 완료\n")
         else:
-            logger.error("❌ Intervention 생성 실패")
-        
-        await mark_as_processed(supabase, emotion['id'])
-        logger.info("✅ 처리 완료\n")
+            logger.error("❌ Intervention 생성 실패 — 재처리 대기")
         
     except Exception as e:
         logger.error(f"❌ 이벤트 처리 중 에러: {e}", exc_info=True)
