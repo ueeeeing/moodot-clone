@@ -8,6 +8,7 @@ import {
   Clock3, ChevronRight, ImagePlus, MapPinned, Trash2,
 } from "lucide-react"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
+import { uploadImage, getSignedUrl } from "@/lib/storage/image"
 import { getMemoryById, updateMemory, deleteMemory } from "@/lib/services/memory"
 import { BottomNavigation } from "@/components/moodot/bottom-navigation"
 
@@ -126,12 +127,18 @@ export default function EditMemoryPage() {
         setTitle(data.title ?? "")
         setText(data.text ?? "")
         setImageUrl(data.image_url ?? null)
-        setImagePreviewUrl(data.image_url ?? null)
+        if (data.image_url) {
+          getSignedUrl(data.image_url)
+            .then((url) => setImagePreviewUrl(url))
+            .catch(() => setImagePreviewUrl(null))
+          setUploadStatus("success")
+        } else {
+          setImagePreviewUrl(null)
+        }
         setLocationLabel(data.location_label ?? "")
         setLocationLat(data.location_lat ?? null)
         setLocationLng(data.location_lng ?? null)
         setPlaceName(data.place_name ?? "")
-        if (data.image_url) setUploadStatus("success")
       } catch {
         alert("기존 기록을 불러오지 못했습니다.")
         router.back()
@@ -215,12 +222,10 @@ export default function EditMemoryPage() {
     setUploadStatus("uploading")
     try {
       const supabase = getSupabaseBrowserClient()
-      const ext = (file.name.split(".").pop() ?? "jpg").toLowerCase()
-      const path = `memories/${Date.now()}-${crypto.randomUUID()}.${ext}`
-      const { error: uploadError } = await supabase.storage.from("memory-images").upload(path, file)
-      if (uploadError) throw uploadError
-      const { data } = supabase.storage.from("memory-images").getPublicUrl(path)
-      setImageUrl(data.publicUrl)
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error("로그인이 필요합니다.")
+      const path = await uploadImage(file, user.id)
+      setImageUrl(path)
       setUploadStatus("success")
     } catch (e) {
       setUploadStatus("failed")

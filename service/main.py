@@ -3,7 +3,7 @@ import os
 import asyncio
 import logging
 from dotenv import load_dotenv
-from supabase import acreate_client, AsyncClient
+from supabase import create_client, acreate_client
 from typing import Dict, Any, Optional
 from datetime import datetime, timedelta
 
@@ -26,25 +26,17 @@ from models import (
     InterventionRepository
 )
 
-from tools.emotion_tools import (
-    DEFAULT_USER_ID,
-    get_recent_emotions,
-    get_days_since_last_record,
-    get_consecutive_emotions,
-    get_emotion_statistics
-)
-
-from tools.intervention_tools import (
-    check_intervention_history,
-    count_today_interventions,
-    should_intervene_based_on_frequency
-)
+from rules import RuleEngine
+from config import LLMFactory
+from generators import MessageGenerator
 
 # 전역 변수
 intervention_repo: Optional['InterventionRepository'] = None
+rule_engine: Optional[RuleEngine] = None
+message_generator: Optional[MessageGenerator] = None
 
 
-async def create_supabase_client() -> AsyncClient:
+async def create_supabase_client() :
     """Supabase 클라이언트 생성"""
     return await acreate_client(
         os.getenv("SUPABASE_URL"),
@@ -52,7 +44,7 @@ async def create_supabase_client() -> AsyncClient:
     )
 
 
-async def mark_as_processed(supabase: AsyncClient, emotion_id: str) -> None:
+async def mark_as_processed(supabase, emotion_id: str) -> None:
     """감정을 처리 완료 상태로 변경"""
     try:
         result = await supabase.table('memories')\
@@ -70,11 +62,11 @@ async def mark_as_processed(supabase: AsyncClient, emotion_id: str) -> None:
 
 
 async def should_intervene(
-    supabase: AsyncClient,  # ✅ supabase 전달
-    user_id: str = DEFAULT_USER_ID  # ✅ 기본값
+    supabase,
+    user_id: str = DEFAULT_USER_ID
 ) -> Dict[str, Any]:
     """
-    개입 여부 판단 (Tools 사용)
+    개입 여부 판단 (Rule Engine 사용)
     
     Args:
         supabase: Supabase 클라이언트
@@ -82,149 +74,181 @@ async def should_intervene(
     
     Returns:
         {
-            "should": True/False,
-            "reason": "no_recent_record" 등,
+            "should_intervene": True/False,
+            "reason": "no_recent_record",
+            "tone": "curious",
+            "severity": 1,
+            "rule": "no_recent_record",
             "context": {...}
         }
     
     Example:
         >>> decision = await should_intervene(supabase)
-        >>> if decision['should']:
+        >>> if decision['should_intervene']:
         >>>     print(f"개입 필요: {decision['reason']}")
     """
+    global rule_engine
+    
     try:
-        # 1. 빈도 제한 체크 (Tool 사용)
-        freq_check = await should_intervene_based_on_frequency(
-            supabase,
-            user_id,
-            max_per_day=2,
-            min_hours_between=4  # ✅ 6시간 → 4시간으로 조정
-        )
-        
-        if not freq_check['should_intervene']:
-            logger.info(f"⏭️ 빈도 제한: {freq_check['reason']}")
-            logger.debug(f"   오늘 {freq_check['today_count']}번 개입")
-            if freq_check['hours_since_last']:
-                logger.debug(f"   마지막 개입: {freq_check['hours_since_last']:.1f}시간 전")
-            
-            return {
-                "should": False,
-                "reason": freq_check['reason'],
-                "context": freq_check
-            }
-        
-        # 2. 감정 데이터 조회 (Tools 사용)
-        days_since = await get_days_since_last_record(supabase, user_id)
-        consecutive_negative = await get_consecutive_emotions(supabase, user_id, "negative")
-        recent_emotions = await get_recent_emotions(supabase, user_id, days=7)
-        stats = await get_emotion_statistics(supabase, user_id, days=7)
-        
-        logger.debug(f"📊 판단 데이터:")
-        logger.debug(f"   - 마지막 기록: {days_since}일 전")
-        logger.debug(f"   - 연속 부정: {consecutive_negative}개")
-        logger.debug(f"   - 최근 7일: {len(recent_emotions)}개")
-        logger.debug(f"   - 긍정/부정: {stats['positive_count']}/{stats['negative_count']}")
-        
-        # 3. 규칙 적용
-        
-        # 규칙 1: 3일 이상 미기록
-        if days_since is not None and days_since >= 3:
-            logger.info(f"✅ 개입 이유: 장기간 미기록 ({days_since}일)")
-            return {
-                "should": True,
-                "reason": InterventionReason.NO_RECENT_RECORD.value,
-                "context": {
-                    "days_since_last_record": days_since,
-                    "recent_emotions_count": len(recent_emotions)
-                }
-            }
-        
-        # 규칙 2: 연속 3개 이상 부정 감정 (bad, sad)
-        if consecutive_negative >= 3:
-            logger.info(f"✅ 개입 이유: 연속 부정 감정 ({consecutive_negative}개)")
-            return {
-                "should": True,
-                "reason": InterventionReason.NEGATIVE_PATTERN.value,  # ✅ NEGATIVE_STREAK → NEGATIVE_PATTERN
-                "context": {
-                    "consecutive_negative": consecutive_negative,
-                    "recent_emotions": [e['emotion_name'] for e in recent_emotions[:5]]
-                }
-            }
-        
-        # 규칙 3: 부정 감정 비율 높음 (70% 이상)
-        if stats['total_count'] >= 5:  # 최소 5개 이상일 때만
-            negative_ratio = stats['negative_count'] / stats['total_count']
-            if negative_ratio >= 0.7:
-                logger.info(f"✅ 개입 이유: 부정 감정 비율 높음 ({negative_ratio:.0%})")
-                return {
-                    "should": True,
-                    "reason": InterventionReason.NEGATIVE_PATTERN.value,
-                    "context": {
-                        "negative_ratio": round(negative_ratio, 2),
-                        "total_count": stats['total_count'],
-                        "negative_count": stats['negative_count'],
-                        "emotion_distribution": stats['emotion_distribution']
-                    }
-                }
-        
-        # 개입 불필요
-        logger.info("⏭️ 개입 불필요: 정상 범위")
-        return {
-            "should": False,
-            "reason": "no_trigger",
-            "context": {
-                "days_since": days_since,
-                "consecutive_negative": consecutive_negative,
-                "stats": stats
-            }
-        }
+        # ✅ Rule Engine으로 판단 (기존 100줄 로직 → 3줄)
+        decision = await rule_engine.evaluate(user_id)
+        return decision
         
     except Exception as e:
         logger.error(f"❌ 개입 판단 실패: {e}", exc_info=True)
         return {
-            "should": False,
+            "should_intervene": False,
             "reason": "error",
             "context": {"error": str(e)}
         }
 
 
-def generate_simple_message(reason: str, context: Dict[str, Any] = None) -> str:
+def generate_simple_message(
+    reason: str, 
+    context: Dict[str, Any] = None,
+    tone: str = "neutral"  # ✅ tone 파라미터 추가
+) -> str:
     """
-    간단한 메시지 생성 (템플릿)
+    톤별 메시지 생성
     
     Args:
         reason: 개입 이유
         context: 추가 컨텍스트
+        tone: 메시지 톤
     
     Returns:
         생성된 메시지
     """
     context = context or {}
     
-    # ✅ 개입 이유별 메시지 템플릿
+    # ✅ 톤별 기본 표현
+    tone_expressions = {
+        # 부정 상황
+        "empathetic": {
+            "greeting": "괜찮아?",
+            "ending": "💙",
+            "connector": "얘기 들어줄게"
+        },
+        "supportive": {
+            "greeting": "안녕!",
+            "ending": "💪",
+            "connector": "내가 옆에 있어"
+        },
+        "concerned": {
+            "greeting": "걱정됐어",
+            "ending": "😟",
+            "connector": "무슨 일 있어?"
+        },
+        "comforting": {
+            "greeting": "힘들지?",
+            "ending": "🤗",
+            "connector": "괜찮아, 천천히 해"
+        },
+        "gentle": {
+            "greeting": "괜찮아",
+            "ending": "🌸",
+            "connector": "조심스럽게 물어볼게"
+        },
+        
+        # 긍정 상황
+        "cheerful": {
+            "greeting": "좋은 하루야!",
+            "ending": "😊",
+            "connector": "기분 좋아 보여"
+        },
+        "encouraging": {
+            "greeting": "잘하고 있어!",
+            "ending": "🌟",
+            "connector": "계속 이렇게만"
+        },
+        "celebrating": {
+            "greeting": "축하해!",
+            "ending": "🎉",
+            "connector": "정말 대단해"
+        },
+        "proud": {
+            "greeting": "자랑스러워!",
+            "ending": "🏆",
+            "connector": "정말 잘했어"
+        },
+        
+        # 일상/중립
+        "curious": {
+            "greeting": "요즘 어때?",
+            "ending": "😊",
+            "connector": "궁금해"
+        },
+        "friendly": {
+            "greeting": "안녕!",
+            "ending": "👋",
+            "connector": "잘 지내고 있지?"
+        },
+        "casual": {
+            "greeting": "뭐해?",
+            "ending": "☺️",
+            "connector": "오늘은"
+        },
+        "playful": {
+            "greeting": "요즘 뭐하고 지내?",
+            "ending": "😏",
+            "connector": "재미있는 일 있어?"
+        },
+        "neutral": {
+            "greeting": "안녕?",
+            "ending": "😊",
+            "connector": "오늘 하루"
+        }
+    }
+    
+    # 톤 표현 가져오기
+    expr = tone_expressions.get(tone, tone_expressions["neutral"])
+    greeting = expr["greeting"]
+    ending = expr["ending"]
+    connector = expr["connector"]
+    
+    # ✅ 이유별 메시지 생성 (severity 반영)
     if reason == InterventionReason.NO_RECENT_RECORD.value:
         days = context.get('days_since_last_record', 3)
-        return f"요즘 어때? {days}일 동안 소식이 없었네! 궁금해 😊"
+        severity = context.get('severity', 1)
+        
+        if severity == 3:  # 심각 (7일+)
+            return f"{greeting} {days}일이나 연락이 없어서 많이 걱정했어. {connector} {ending}"
+        elif severity == 2:  # 중간 (5일)
+            return f"{greeting} {days}일 동안 소식이 없었네! {connector} {ending}"
+        else:  # 보통 (3일)
+            return f"{greeting} {days}일째 연락 없어서 {connector} {ending}"
     
     elif reason == InterventionReason.NEGATIVE_PATTERN.value:
         consecutive = context.get('consecutive_negative', 0)
-        if consecutive >= 3:
-            return f"요즘 힘든 일이 계속되는 것 같아. 괜찮아? 💙"
+        severity = context.get('severity', 1)
         
-        negative_ratio = context.get('negative_ratio')
-        if negative_ratio:
-            return f"최근에 많이 힘들어 보여. 무슨 일 있어? 🤗"
+        if consecutive >= 3:  # 연속 부정
+            if severity == 3:  # 심각 (5개+)
+                return f"{greeting} 요즘 정말 많이 힘들어 보여. {connector} {ending}"
+            elif severity == 2:  # 중간 (4개)
+                return f"{greeting} 힘든 일이 계속되는 것 같아. {connector} {ending}"
+            else:  # 보통 (3개)
+                return f"{greeting} 요즘 힘들지? {connector} {ending}"
+        
+        # 부정 비율
+        negative_ratio = context.get('negative_ratio', 0)
+        if severity == 3:  # 심각 (90%+)
+            return f"{greeting} 최근에 너무 힘든 일이 많았던 것 같아. {connector} {ending}"
+        elif severity == 2:  # 중간 (80%)
+            return f"{greeting} 요즘 많이 지쳐 보이네. {connector} {ending}"
+        else:  # 보통 (70%)
+            return f"{greeting} 요즘 좀 힘들어 보여. {connector} {ending}"
     
     elif reason == InterventionReason.POSITIVE_REINFORCEMENT.value:
-        return "좋은 일들이 계속되고 있네! 축하해 🎉"
+        return f"{greeting} 좋은 일들이 계속되고 있네! {connector} {ending}"
     
     # 기본 메시지
-    return "안녕? 오늘 하루 어때? 😊"
+    return f"{greeting} 오늘 하루 어때? {ending}"
 
 
-async def handle_new_emotion(supabase: AsyncClient, payload: Dict[str, Any]) -> None:
+async def handle_new_emotion(supabase, payload: Dict[str, Any]) -> None:
     """
-    새로운 감정 이벤트 처리 (Tools 사용)
+    새로운 감정 이벤트 처리
     
     Args:
         supabase: Supabase 클라이언트
@@ -234,8 +258,6 @@ async def handle_new_emotion(supabase: AsyncClient, payload: Dict[str, Any]) -> 
     
     try:
         emotion = payload['record']
-        
-        # ✅ user_id 가져오기 (없으면 DEFAULT_USER_ID)
         user_id = emotion.get('user_id', DEFAULT_USER_ID)
         
         # emotion_id로 감정 이름 조회
@@ -260,20 +282,31 @@ async def handle_new_emotion(supabase: AsyncClient, payload: Dict[str, Any]) -> 
         logger.info(f"   시간: {emotion['created_at']}")
         logger.info("=" * 50)
         
-        # ✅ Tools를 사용한 판단
+        # ✅ Rule Engine으로 판단
         decision = await should_intervene(supabase, user_id)
         
-        if not decision["should"]:
-            logger.info(f"⏭️ 개입 불필요: {decision['reason']}")
+        if not decision.get("should_intervene"):
+            logger.info(f"⏭️ 개입 불필요: {decision.get('reason')}")
             await mark_as_processed(supabase, emotion['id'])
             return
         
-        # 개입 생성
+        # ✅ 개입 생성 (톤 정보 추가 로깅)
         logger.info(f"💬 개입 생성 중...")
+        logger.info(f"   규칙: {decision.get('rule')}")
         logger.info(f"   이유: {decision['reason']}")
+        logger.info(f"   톤: {decision.get('tone')}")
+        logger.info(f"   심각도: {decision.get('severity', 1)}/3")
         
-        # ✅ 메시지 생성
-        message = generate_simple_message(decision["reason"], decision.get("context"))
+        # 메시지 생성 — LLM 미연결 시 개입 생성 생략 (processed 유지 → 재기동 후 재처리)
+        if not message_generator:
+            logger.info("⏭️ LLM 미연결 — 개입 생성 생략 (미처리 상태 유지)")
+            return
+
+        message, gen_meta = message_generator.generate_with_validation(
+            decision["reason"],
+            decision.get("context", {})
+        )
+        logger.info(f"   생성 방법: {gen_meta.get('generation_method')}")
         
         intervention = Intervention(
             user_id=user_id,
@@ -296,31 +329,7 @@ async def handle_new_emotion(supabase: AsyncClient, payload: Dict[str, Any]) -> 
         logger.error(f"❌ 이벤트 처리 중 에러: {e}", exc_info=True)
 
 
-
-
-
-# async def simple_judgment(user_id: str) -> bool:
-#     """
-#     간단한 판단 로직 (테스트용)
-#     Task 1.1에서 고도화 예정
-#     """
-#     # 오늘 2번 이상 개입했으면 안 함
-#     today_count = await intervention_repo.count_today(user_id)
-    
-#     if today_count >= 2:
-#         logger.info(f"⏭️ 빈도 제한: 오늘 {today_count}번 개입")
-#         return False
-    
-#     # 테스트: 50% 확률
-#     import random
-#     return random.random() > 0.5
-
-
-
-
-
-
-async def process_missed_emotions(supabase: AsyncClient) -> None:
+async def process_missed_emotions(supabase) -> None:
     """워커가 다운되었을 때 놓친 감정 처리 (안전장치)"""
     logger.info("🔍 놓친 감정 확인 중...")
 
@@ -352,14 +361,14 @@ async def process_missed_emotions(supabase: AsyncClient) -> None:
         logger.error(f"❌ 놓친 감정 처리 실패: {e}", exc_info=True)
 
 
-async def periodic_check(supabase: AsyncClient) -> None:
+async def periodic_check(supabase) -> None:
     """5분마다 놓친 감정 체크"""
     while True:
         await asyncio.sleep(5 * 60)  # 5분 대기
         await process_missed_emotions(supabase)
 
 
-def on_postgres_changes(supabase: AsyncClient, payload: Dict[str, Any]) -> None:
+def on_postgres_changes(supabase, payload: Dict[str, Any]) -> None:
     """Postgres 변경 이벤트 핸들러 (동기 콜백)"""
     event_type = payload.get('eventType')
     if event_type == 'INSERT':
@@ -372,21 +381,57 @@ def on_postgres_changes(supabase: AsyncClient, payload: Dict[str, Any]) -> None:
         logger.debug(f"무시된 이벤트 타입: {event_type}")
 
 
-async def initial_check(supabase: AsyncClient) -> None:
+async def initial_check(supabase) -> None:
     """초기 놓친 감정 체크 (5초 후)"""
     await asyncio.sleep(5)
     await process_missed_emotions(supabase)
 
 
+async def health_server() -> None:
+    """Render Web Service용 최소 HTTP 서버 — 포트만 열고 200 OK 응답"""
+    port = int(os.getenv("PORT", 8000))
+
+    async def handle(reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
+        try:
+            await asyncio.wait_for(reader.read(1024), timeout=5)
+            body = b'{"status":"ok"}'
+            writer.write(
+                b"HTTP/1.1 200 OK\r\n"
+                b"Content-Type: application/json\r\n"
+                b"Content-Length: " + str(len(body)).encode() + b"\r\n"
+                b"\r\n" + body
+            )
+            await writer.drain()
+        except Exception:
+            pass
+        finally:
+            writer.close()
+
+    server = await asyncio.start_server(handle, "0.0.0.0", port)
+    logger.info(f"🌐 Health server 시작: port={port}")
+    async with server:
+        await server.serve_forever()
+
+
 async def main() -> None:
     """메인 비동기 진입점"""
-    global intervention_repo
+    global intervention_repo, rule_engine, message_generator
 
     logger.info("🚀 AI 에이전트 워커 시작...")
     logger.info(f"📡 Supabase URL: {os.getenv('SUPABASE_URL')}")
 
     supabase = await create_supabase_client()
     intervention_repo = InterventionRepository(supabase)
+    rule_engine = RuleEngine(supabase)
+
+    # MessageGenerator 초기화 — LLM 미연결 시 템플릿 fallback으로 동작
+    try:
+        llm = LLMFactory.create()
+        message_generator = MessageGenerator(llm)
+        logger.info(f"✅ MessageGenerator 초기화 완료 ({llm.model_name})")
+    except Exception as e:
+        message_generator = None
+        logger.warning(f"⚠️ LLM 연결 실패 — 템플릿 메시지로 동작합니다: {e}")
 
     # Realtime 채널 생성 및 구독
     max_retries = 3
@@ -409,8 +454,9 @@ async def main() -> None:
                 raise
             await asyncio.sleep(5)
 
-    # 병렬 실행: 초기 체크 + 주기적 체크
+    # 병렬 실행: health server + 초기 체크 + 주기적 체크
     await asyncio.gather(
+        health_server(),            # Render health check용
         initial_check(supabase),    # 5초 후 초기 체크
         periodic_check(supabase),   # 5분마다 체크 (무한 루프)
     )

@@ -5,7 +5,7 @@
 import logging
 from typing import Dict, Optional, Any
 from datetime import datetime, timedelta
-from supabase import AsyncClient
+
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +14,7 @@ DEFAULT_USER_ID = "default_user"
 
 
 async def check_intervention_history(
-    supabase: AsyncClient,
+    supabase,
     user_id: str = DEFAULT_USER_ID,  # ✅ 기본값 추가
     hours: int = 24
 ) -> Dict[str, Any]:
@@ -95,7 +95,7 @@ async def check_intervention_history(
 
 
 async def count_today_interventions(
-    supabase: AsyncClient,
+    supabase,
     user_id: str = DEFAULT_USER_ID  # ✅ 기본값 추가
 ) -> int:
     """
@@ -137,7 +137,7 @@ async def count_today_interventions(
 
 
 async def get_last_intervention_time(
-    supabase: AsyncClient,
+    supabase,
     user_id: str = DEFAULT_USER_ID  # ✅ 기본값 추가
 ) -> Optional[datetime]:
     """
@@ -179,7 +179,7 @@ async def get_last_intervention_time(
 
 
 async def get_intervention_acceptance_rate(
-    supabase: AsyncClient,
+    supabase,
     user_id: str = DEFAULT_USER_ID,  # ✅ 기본값 추가
     days: int = 30
 ) -> Dict[str, Any]:
@@ -260,7 +260,7 @@ async def get_intervention_acceptance_rate(
 
 
 async def should_intervene_based_on_frequency(
-    supabase: AsyncClient,
+    supabase,
     user_id: str = DEFAULT_USER_ID,
     max_per_day: int = 2,  # ✅ 설정 가능하도록
     min_hours_between: int = 4
@@ -333,3 +333,32 @@ async def should_intervene_based_on_frequency(
             "today_count": 0,
             "hours_since_last": None
         }
+    
+async def get_hours_since_last_intervention(
+    supabase,
+    user_id: str = DEFAULT_USER_ID
+) -> Optional[float]:
+    """
+    마지막 개입 이후 경과 시간 (시간 단위)
+    
+    Args:
+        supabase: Supabase 클라이언트
+        user_id: 사용자 ID
+    
+    Returns:
+        경과 시간 (시간 단위), 개입 없으면 None
+    
+    Example:
+        >>> hours = await get_hours_since_last_intervention(supabase)
+        >>> hours
+        5.5
+    """
+    last_time = await get_last_intervention_time(supabase, user_id)
+    
+    if not last_time:
+        return None
+    
+    now = datetime.now(last_time.tzinfo)
+    hours = (now - last_time).total_seconds() / 3600
+    
+    return round(hours, 2)

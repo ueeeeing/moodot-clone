@@ -1,13 +1,13 @@
 "use client"
 
 import { useRouter, usePathname } from "next/navigation"
-import { Home, BookOpen, Lightbulb, CalendarDays } from "lucide-react"
+import { Home, BookOpen, Layers, CalendarDays } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const navItems = [
   { id: "home", label: "홈", icon: Home, path: "/" },
   { id: "journal", label: "기록", icon: BookOpen, path: "/records" },
-  { id: "insights", label: "인사이트", icon: Lightbulb, path: null },
+  { id: "collection", label: "컬렉션", icon: Layers, path: "/collection" },
   { id: "meditation", label: "캘린더", icon: CalendarDays, path: "/calendar" },
 ]
 
@@ -18,6 +18,7 @@ export function BottomNavigation() {
   const activeTab =
     pathname === "/records" ? "journal" :
     pathname === "/calendar" ? "meditation" :
+    pathname.startsWith("/collection") ? "collection" :
     pathname === "/" ? "home" : ""
 
   return (

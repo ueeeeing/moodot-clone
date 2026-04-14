@@ -152,8 +152,8 @@ class InterventionRepository:
     
 
     async def get_recent(
-        self, 
-        #user_id: str, 
+        self,
+        user_id: str,
         hours: int = 24,
         limit: int = 10
     ) -> List[Intervention]:

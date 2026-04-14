@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import type { LeafletMap, LeafletMarker } from "@/types/leaflet"
 import { Smile, Frown, CloudRain, Leaf, User, Users, MapPin, Pencil } from "lucide-react"
 import { getMemoryById, type MemoryRow } from "@/lib/services/memory"
+import { SignedImage } from "@/components/moodot/signed-image"
 
 
 let leafletLoader: Promise<void> | null = null
@@ -192,9 +193,8 @@ export function MemoryDetail({ id }: { id: number }) {
       {memory.image_url && (
         <section>
           <div className="aspect-[4/3] w-full rounded-2xl overflow-hidden bg-mb-unselected">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={memory.image_url}
+            <SignedImage
+              path={memory.image_url}
               alt="Memory photo"
               className="w-full h-full object-cover transition-all duration-200"
             />
