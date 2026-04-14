@@ -14,9 +14,12 @@ class NegativeRatioRule(Rule):
     priority = 3  # 낮은 우선순위
     name = "negative_ratio"
     
-    def __init__(self, threshold_ratio: float = 0.7, min_count: int = 5):
+    def __init__(self, threshold_ratio: float = 0.7, min_count: int = 5,
+                 severity_2_at: float = 0.8, severity_3_at: float = 0.9):
         self.threshold_ratio = threshold_ratio
         self.min_count = min_count
+        self.severity_2_at = severity_2_at
+        self.severity_3_at = severity_3_at
     
     async def check(self, context: Dict[str, Any]) -> bool:
         self.last_context = context
@@ -44,9 +47,9 @@ class NegativeRatioRule(Rule):
         negative = stats.get('negative_count', 0)
         ratio = negative / total if total > 0 else 0
         
-        if ratio >= 0.9:
-            return 3  # 심각 (90% 이상)
-        elif ratio >= 0.8:
+        if ratio >= self.severity_3_at:
+            return 3  # 심각
+        elif ratio >= self.severity_2_at:
             return 2  # 중간
         return 1      # 보통
     

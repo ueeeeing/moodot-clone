@@ -14,8 +14,10 @@ class NoRecentRecordRule(Rule):
     priority = 2  # 중간 우선순위
     name = "no_recent_record"
     
-    def __init__(self, threshold_days: int = 3):
+    def __init__(self, threshold_days: int = 3, severity_2_at: int = 5, severity_3_at: int = 7):
         self.threshold_days = threshold_days
+        self.severity_2_at = severity_2_at
+        self.severity_3_at = severity_3_at
     
     async def check(self, context: Dict[str, Any]) -> bool:
         self.last_context = context
@@ -33,9 +35,9 @@ class NoRecentRecordRule(Rule):
         """일수로 심각도 판단"""
         days_since = context.get('days_since_last_record', 0)
         
-        if days_since >= 7:
+        if days_since >= self.severity_3_at:
             return 3  # 심각 (일주일 이상)
-        elif days_since >= 5:
+        elif days_since >= self.severity_2_at:
             return 2  # 중간
         return 1      # 보통
     

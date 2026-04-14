@@ -3,6 +3,7 @@ import logging
 from typing import Dict, Any, Optional, List
 
 from .base import Rule
+from .config import RULES_CONFIG
 from .frequency_limit import FrequencyLimitRule
 from .no_recent_record import NoRecentRecordRule
 from .negative_streak import NegativeStreakRule
@@ -38,13 +39,36 @@ class RuleEngine:
     def __init__(self, supabase):
         self.supabase = supabase
         
-        # 규칙 등록 (순서 무관, priority로 자동 정렬됨)
+        # 규칙 등록 (config.py에서 숫자/on-off 관리, 순서 무관 — priority로 자동 정렬)
+        cfg = RULES_CONFIG
         self.rules: List[Rule] = [
-            FrequencyLimitRule(max_per_day=2, min_hours_between=4),
-            NegativeStreakRule(threshold=3),
-            NoRecentRecordRule(threshold_days=3),
-            NegativeRatioRule(threshold_ratio=0.7, min_count=5),
-            PositiveStreakRule(threshold=3),
+            r for r in [
+                FrequencyLimitRule(
+                    max_per_day=cfg.frequency_limit.max_per_day,
+                    min_hours_between=cfg.frequency_limit.min_hours_between,
+                ) if cfg.frequency_limit.enabled else None,
+                NegativeStreakRule(
+                    threshold=cfg.negative_streak.threshold,
+                    severity_2_at=cfg.negative_streak.severity_2_at,
+                    severity_3_at=cfg.negative_streak.severity_3_at,
+                ) if cfg.negative_streak.enabled else None,
+                NoRecentRecordRule(
+                    threshold_days=cfg.no_recent_record.threshold_days,
+                    severity_2_at=cfg.no_recent_record.severity_2_at,
+                    severity_3_at=cfg.no_recent_record.severity_3_at,
+                ) if cfg.no_recent_record.enabled else None,
+                NegativeRatioRule(
+                    threshold_ratio=cfg.negative_ratio.threshold_ratio,
+                    min_count=cfg.negative_ratio.min_count,
+                    severity_2_at=cfg.negative_ratio.severity_2_at,
+                    severity_3_at=cfg.negative_ratio.severity_3_at,
+                ) if cfg.negative_ratio.enabled else None,
+                PositiveStreakRule(
+                    threshold=cfg.positive_streak.threshold,
+                    severity_2_at=cfg.positive_streak.severity_2_at,
+                    severity_3_at=cfg.positive_streak.severity_3_at,
+                ) if cfg.positive_streak.enabled else None,
+            ] if r is not None
         ]
         
         # 우선순위 순으로 정렬
