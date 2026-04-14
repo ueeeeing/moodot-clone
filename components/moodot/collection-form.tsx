@@ -50,6 +50,40 @@ export function CollectionForm({
 
   const [showMemoryPicker, setShowMemoryPicker] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+
+  // 기간 필터링된 메모리 목록
+  const filteredMemories = availableMemories.filter((m) => {
+    if (!startDate && !endDate) return true
+    if (!m.memory_at) return true
+    const memDate = m.memory_at.slice(0, 10)
+    if (startDate && memDate < startDate) return false
+    if (endDate && memDate > endDate) return false
+    return true
+  })
+
+  function handleStartDateChange(val: string) {
+    setStartDate(val)
+    if (val) {
+      const newIds = selectedIds.filter((id) => {
+        const m = availableMemories.find((am) => am.id === id)
+        if (!m?.memory_at) return true
+        return m.memory_at.slice(0, 10) >= val
+      })
+      if (newIds.length !== selectedIds.length) handleSelectedChange(newIds)
+    }
+  }
+
+  function handleEndDateChange(val: string) {
+    setEndDate(val)
+    if (val) {
+      const newIds = selectedIds.filter((id) => {
+        const m = availableMemories.find((am) => am.id === id)
+        if (!m?.memory_at) return true
+        return m.memory_at.slice(0, 10) <= val
+      })
+      if (newIds.length !== selectedIds.length) handleSelectedChange(newIds)
+    }
+  }
   const [isDeleting, setIsDeleting] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [errorMsg, setErrorMsg] = useState("")
@@ -164,7 +198,7 @@ export function CollectionForm({
             <input
               type="date"
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+              onChange={(e) => handleStartDateChange(e.target.value)}
               className="h-11 flex-1 rounded-xl bg-mb-card px-3 font-body text-sm text-mb-dark outline-none focus:ring-2 focus:ring-mb-primary/40"
             />
             <span className="font-body text-sm text-mb-muted">-</span>
@@ -172,7 +206,7 @@ export function CollectionForm({
               type="date"
               value={endDate}
               min={startDate || undefined}
-              onChange={(e) => setEndDate(e.target.value)}
+              onChange={(e) => handleEndDateChange(e.target.value)}
               className="h-11 flex-1 rounded-xl bg-mb-card px-3 font-body text-sm text-mb-dark outline-none focus:ring-2 focus:ring-mb-primary/40"
             />
           </div>
@@ -226,11 +260,17 @@ export function CollectionForm({
           </button>
           {showMemoryPicker && (
             <div className="mt-2 rounded-xl bg-mb-unselected/30 p-3">
-              <MemoryPicker
-                memories={availableMemories}
-                selectedIds={selectedIds}
-                onChange={handleSelectedChange}
-              />
+              {(startDate || endDate) && filteredMemories.length === 0 ? (
+                <p className="py-4 text-center font-body text-sm text-mb-muted">
+                  해당 기간에 해당하는 기록이 없습니다.
+                </p>
+              ) : (
+                <MemoryPicker
+                  memories={filteredMemories}
+                  selectedIds={selectedIds}
+                  onChange={handleSelectedChange}
+                />
+              )}
             </div>
           )}
         </div>
