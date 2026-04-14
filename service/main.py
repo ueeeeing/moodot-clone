@@ -27,7 +27,7 @@ from models import (
 )
 
 from rules import RuleEngine
-from config import LLMConfig
+from config import LLMFactory
 from generators import MessageGenerator
 
 # 전역 변수
@@ -297,20 +297,16 @@ async def handle_new_emotion(supabase, payload: Dict[str, Any]) -> None:
         logger.info(f"   톤: {decision.get('tone')}")
         logger.info(f"   심각도: {decision.get('severity', 1)}/3")
         
-        # 메시지 생성 — LLM 우선, 실패 시 템플릿 fallback
-        if message_generator:
-            message, gen_meta = message_generator.generate_with_validation(
-                decision["reason"],
-                decision.get("context", {})
-            )
-            logger.info(f"   생성 방법: {gen_meta.get('generation_method')}")
-        else:
-            message = "(연결실패) " + generate_simple_message(
-                decision["reason"],
-                decision.get("context"),
-                tone=decision.get("tone", "neutral")
-            )
-            logger.info("   생성 방법: template (Ollama 미연결)")
+        # 메시지 생성 — LLM 미연결 시 개입 생성 생략 (processed 유지 → 재기동 후 재처리)
+        if not message_generator:
+            logger.info("⏭️ LLM 미연결 — 개입 생성 생략 (미처리 상태 유지)")
+            return
+
+        message, gen_meta = message_generator.generate_with_validation(
+            decision["reason"],
+            decision.get("context", {})
+        )
+        logger.info(f"   생성 방법: {gen_meta.get('generation_method')}")
         
         intervention = Intervention(
             user_id=user_id,
@@ -391,6 +387,32 @@ async def initial_check(supabase) -> None:
     await process_missed_emotions(supabase)
 
 
+async def health_server() -> None:
+    """Render Web Service용 최소 HTTP 서버 — 포트만 열고 200 OK 응답"""
+    port = int(os.getenv("PORT", 8000))
+
+    async def handle(reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
+        try:
+            await asyncio.wait_for(reader.read(1024), timeout=5)
+            body = b'{"status":"ok"}'
+            writer.write(
+                b"HTTP/1.1 200 OK\r\n"
+                b"Content-Type: application/json\r\n"
+                b"Content-Length: " + str(len(body)).encode() + b"\r\n"
+                b"\r\n" + body
+            )
+            await writer.drain()
+        except Exception:
+            pass
+        finally:
+            writer.close()
+
+    server = await asyncio.start_server(handle, "0.0.0.0", port)
+    logger.info(f"🌐 Health server 시작: port={port}")
+    async with server:
+        await server.serve_forever()
+
+
 async def main() -> None:
     """메인 비동기 진입점"""
     global intervention_repo, rule_engine, message_generator
@@ -402,14 +424,14 @@ async def main() -> None:
     intervention_repo = InterventionRepository(supabase)
     rule_engine = RuleEngine(supabase)
 
-    # MessageGenerator 초기화 — Ollama 미실행 시 템플릿 fallback으로 동작
+    # MessageGenerator 초기화 — LLM 미연결 시 템플릿 fallback으로 동작
     try:
-        llm = LLMConfig.create_llm()
+        llm = LLMFactory.create()
         message_generator = MessageGenerator(llm)
-        logger.info("✅ MessageGenerator 초기화 완료 (Ollama)")
+        logger.info(f"✅ MessageGenerator 초기화 완료 ({llm.model_name})")
     except Exception as e:
         message_generator = None
-        logger.warning(f"⚠️ Ollama 연결 실패 — 템플릿 메시지로 동작합니다: {e}")
+        logger.warning(f"⚠️ LLM 연결 실패 — 템플릿 메시지로 동작합니다: {e}")
 
     # Realtime 채널 생성 및 구독
     max_retries = 3
@@ -432,8 +454,9 @@ async def main() -> None:
                 raise
             await asyncio.sleep(5)
 
-    # 병렬 실행: 초기 체크 + 주기적 체크
+    # 병렬 실행: health server + 초기 체크 + 주기적 체크
     await asyncio.gather(
+        health_server(),            # Render health check용
         initial_check(supabase),    # 5초 후 초기 체크
         periodic_check(supabase),   # 5분마다 체크 (무한 루프)
     )

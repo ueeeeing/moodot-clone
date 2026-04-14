@@ -14,10 +14,15 @@ export type Intervention = {
 
 export async function getLatestPendingIntervention(): Promise<Intervention | null> {
   const supabase = getSupabaseBrowserClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+
   const { data, error } = await supabase
     .from("interventions")
     .select("*")
     .eq("status", "pending")
+    .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(1)
 
