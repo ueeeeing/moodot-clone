@@ -1,11 +1,12 @@
 supabase>=2.4.0
 python-dotenv==1.0.0
-realtime==1.0.0
+# realtime==1.0.0  # supabase 최신 버전과 충돌 (realtime>=2.x 필요)
+httpx<0.28.0
 
-langchain==0.1.0
-langchain-community==0.0.10
+# langchain==0.1.0          # Render(Python 3.14)와 호환 안 됨, Ollama는 Render에서 미사용
+# langchain-community==0.0.10
 
-ollama==0.1.7
+# ollama==0.1.7
 openai>=1.30.0
 
 tiktoken>=0.7.0
