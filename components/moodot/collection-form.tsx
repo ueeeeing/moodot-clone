@@ -2,8 +2,6 @@
 
 import { useState } from "react"
 import {
-  ChevronDown,
-  ChevronUp,
   MapPin,
   CalendarDays,
   FileText,
@@ -48,7 +46,6 @@ export function CollectionForm({
   )
 
   const [showMemoryPicker, setShowMemoryPicker] = useState(true)
-  const [showOptional, setShowOptional] = useState(isEdit)
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -126,6 +123,59 @@ export function CollectionForm({
         />
       </div>
 
+      {/* 위치 */}
+      <div>
+        <label className="mb-1.5 flex items-center gap-1.5 font-heading text-[12px] font-semibold text-mb-dark/60">
+          <MapPin className="h-3.5 w-3.5" /> 위치
+        </label>
+        <input
+          type="text"
+          value={location}
+          onChange={(e) => setLocation(e.target.value)}
+          placeholder="예: 이탈리아 로마"
+          maxLength={80}
+          className="h-11 w-full rounded-xl bg-mb-card px-4 font-body text-sm text-mb-dark outline-none transition-all duration-200 placeholder:text-mb-muted focus:ring-2 focus:ring-mb-primary/40"
+        />
+      </div>
+
+      {/* 기간 */}
+      <div>
+        <label className="mb-1.5 flex items-center gap-1.5 font-heading text-[12px] font-semibold text-mb-dark/60">
+          <CalendarDays className="h-3.5 w-3.5" /> 기간
+        </label>
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="h-11 flex-1 rounded-xl bg-mb-card px-3 font-body text-sm text-mb-dark outline-none focus:ring-2 focus:ring-mb-primary/40"
+          />
+          <span className="font-body text-sm text-mb-muted">-</span>
+          <input
+            type="date"
+            value={endDate}
+            min={startDate || undefined}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="h-11 flex-1 rounded-xl bg-mb-card px-3 font-body text-sm text-mb-dark outline-none focus:ring-2 focus:ring-mb-primary/40"
+          />
+        </div>
+      </div>
+
+      {/* 전체 메모 */}
+      <div>
+        <label className="mb-1.5 flex items-center gap-1.5 font-heading text-[12px] font-semibold text-mb-dark/60">
+          <FileText className="h-3.5 w-3.5" /> 전체 메모
+        </label>
+        <textarea
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="이 컬렉션에 대한 메모를 남겨보세요..."
+          rows={3}
+          maxLength={500}
+          className="w-full resize-none rounded-xl bg-mb-card px-4 py-3 font-body text-sm text-mb-dark outline-none transition-all duration-200 placeholder:text-mb-muted focus:ring-2 focus:ring-mb-primary/40"
+        />
+      </div>
+
       {/* 기록 선택 */}
       <div>
         <button
@@ -141,11 +191,6 @@ export function CollectionForm({
               </span>
             )}
           </span>
-          {showMemoryPicker ? (
-            <ChevronUp className="h-4 w-4 text-mb-muted" />
-          ) : (
-            <ChevronDown className="h-4 w-4 text-mb-muted" />
-          )}
         </button>
         {showMemoryPicker && (
           <div className="mt-2 rounded-xl bg-mb-unselected/30 p-3">
@@ -158,117 +203,44 @@ export function CollectionForm({
         )}
       </div>
 
-      {/* 추가 정보 (선택) */}
-      <div>
-        <button
-          type="button"
-          onClick={() => setShowOptional((v) => !v)}
-          className="flex w-full items-center justify-between rounded-xl bg-mb-card px-4 py-3 font-heading text-[13px] font-semibold text-mb-dark/70 transition-colors hover:bg-mb-unselected/60"
-        >
-          <span>추가 정보 (선택)</span>
-          {showOptional ? (
-            <ChevronUp className="h-4 w-4 text-mb-muted" />
-          ) : (
-            <ChevronDown className="h-4 w-4 text-mb-muted" />
-          )}
-        </button>
-
-        {showOptional && (
-          <div className="mt-2 space-y-4 rounded-xl bg-mb-unselected/30 p-4">
-            {/* 위치 */}
-            <div>
-              <label className="mb-1.5 flex items-center gap-1.5 font-heading text-[12px] font-semibold text-mb-dark/60">
-                <MapPin className="h-3.5 w-3.5" /> 위치
-              </label>
-              <input
-                type="text"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                placeholder="예: 이탈리아 로마"
-                maxLength={80}
-                className="h-11 w-full rounded-xl bg-mb-card px-4 font-body text-sm text-mb-dark outline-none transition-all duration-200 placeholder:text-mb-muted focus:ring-2 focus:ring-mb-primary/40"
-              />
-            </div>
-
-            {/* 기간 */}
-            <div>
-              <label className="mb-1.5 flex items-center gap-1.5 font-heading text-[12px] font-semibold text-mb-dark/60">
-                <CalendarDays className="h-3.5 w-3.5" /> 기간
-              </label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="h-11 flex-1 rounded-xl bg-mb-card px-3 font-body text-sm text-mb-dark outline-none focus:ring-2 focus:ring-mb-primary/40"
+      {/* 대표 이미지 */}
+      {coverCandidates.length > 0 && (
+        <div>
+          <label className="mb-1.5 flex items-center gap-1.5 font-heading text-[12px] font-semibold text-mb-dark/60">
+            <Star className="h-3.5 w-3.5" /> 대표 이미지
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {coverCandidates.map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() =>
+                  setCoverMemoryId(
+                    resolvedCoverMemoryId === m.id ? null : m.id
+                  )
+                }
+                className={cn(
+                  "relative h-16 w-16 overflow-hidden rounded-xl border-2 transition-all duration-150",
+                  resolvedCoverMemoryId === m.id
+                    ? "border-mb-primary shadow-md"
+                    : "border-transparent opacity-70 hover:opacity-100"
+                )}
+              >
+                <SignedImage
+                  path={m.image_url!}
+                  alt={m.title ?? "memory"}
+                  className="h-full w-full object-cover"
                 />
-                <span className="font-body text-sm text-mb-muted">-</span>
-                <input
-                  type="date"
-                  value={endDate}
-                  min={startDate || undefined}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="h-11 flex-1 rounded-xl bg-mb-card px-3 font-body text-sm text-mb-dark outline-none focus:ring-2 focus:ring-mb-primary/40"
-                />
-              </div>
-            </div>
-
-            {/* 대표 이미지 */}
-            {coverCandidates.length > 0 && (
-              <div>
-                <label className="mb-1.5 flex items-center gap-1.5 font-heading text-[12px] font-semibold text-mb-dark/60">
-                  <Star className="h-3.5 w-3.5" /> 대표 이미지
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {coverCandidates.map((m) => (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() =>
-                        setCoverMemoryId(
-                          resolvedCoverMemoryId === m.id ? null : m.id
-                        )
-                      }
-                      className={cn(
-                        "relative h-16 w-16 overflow-hidden rounded-xl border-2 transition-all duration-150",
-                        resolvedCoverMemoryId === m.id
-                          ? "border-mb-primary shadow-md"
-                          : "border-transparent opacity-70 hover:opacity-100"
-                      )}
-                    >
-                      <SignedImage
-                        path={m.image_url!}
-                        alt={m.title ?? "memory"}
-                        className="h-full w-full object-cover"
-                      />
-                      {resolvedCoverMemoryId === m.id && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-mb-primary/30">
-                          <Star className="h-4 w-4 fill-white text-white" />
-                        </div>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* 전체 메모 */}
-            <div>
-              <label className="mb-1.5 flex items-center gap-1.5 font-heading text-[12px] font-semibold text-mb-dark/60">
-                <FileText className="h-3.5 w-3.5" /> 전체 메모
-              </label>
-              <textarea
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="이 컬렉션에 대한 메모를 남겨보세요..."
-                rows={3}
-                maxLength={500}
-                className="w-full resize-none rounded-xl bg-mb-card px-4 py-3 font-body text-sm text-mb-dark outline-none transition-all duration-200 placeholder:text-mb-muted focus:ring-2 focus:ring-mb-primary/40"
-              />
-            </div>
+                {resolvedCoverMemoryId === m.id && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-mb-primary/30">
+                    <Star className="h-4 w-4 fill-white text-white" />
+                  </div>
+                )}
+              </button>
+            ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* 에러 메시지 */}
       {errorMsg && (
