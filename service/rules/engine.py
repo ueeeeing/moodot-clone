@@ -20,6 +20,7 @@ from tools.intervention_tools import (
     count_today_interventions,
     get_hours_since_last_intervention
 )
+from scoring import get_feedback_trend
 
 logger = logging.getLogger(__name__)
 
@@ -177,11 +178,12 @@ class RuleEngine:
                 get_consecutive_emotions(self.supabase, user_id, "positive"),
                 get_recent_emotions(self.supabase, user_id, days=7),
                 get_emotion_statistics(self.supabase, user_id, days=7),
+                get_feedback_trend(self.supabase, user_id),
                 return_exceptions=True  # 예외 발생해도 계속 진행
             )
 
             # 결과 언팩
-            today_count, hours_since, days_since, consecutive_neg, consecutive_pos, recent_emotions, stats = results
+            today_count, hours_since, days_since, consecutive_neg, consecutive_pos, recent_emotions, stats, feedback_avg = results
 
             return {
                 'user_id': user_id,
@@ -191,7 +193,8 @@ class RuleEngine:
                 'consecutive_negative': consecutive_neg if not isinstance(consecutive_neg, Exception) else 0,
                 'consecutive_positive': consecutive_pos if not isinstance(consecutive_pos, Exception) else 0,
                 'recent_emotions': recent_emotions if not isinstance(recent_emotions, Exception) else [],
-                'emotion_stats': stats if not isinstance(stats, Exception) else {}
+                'emotion_stats': stats if not isinstance(stats, Exception) else {},
+                'feedback_avg_score': feedback_avg if not isinstance(feedback_avg, Exception) else None,
             }
         
         except Exception as e:

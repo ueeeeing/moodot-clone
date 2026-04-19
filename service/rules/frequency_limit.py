@@ -1,6 +1,7 @@
 # agents/rules/frequency_limit.py
 from typing import Dict, Any
 from .base import Rule
+from scoring import get_adjusted_max_per_day
 
 class FrequencyLimitRule(Rule):
     """
@@ -27,8 +28,12 @@ class FrequencyLimitRule(Rule):
             True: 제한 초과 (개입 금지)
             False: 제한 내 (다음 규칙으로)
         """
-        # 오늘 개입 횟수 체크
-        if context['today_count'] >= self.max_per_day:
+        # 피드백 트렌드 기반 동적 한도
+        effective_max = get_adjusted_max_per_day(
+            context.get('feedback_avg_score'), base=self.max_per_day
+        )
+
+        if context['today_count'] >= effective_max:
             return True
         
         # 마지막 개입 시간 체크
