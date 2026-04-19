@@ -76,14 +76,27 @@ class MessageGenerator:
             }
             return fallback, metadata
 
+    def _extract_recent_memories(self, recent_emotions: list, limit: int = 3) -> str:
+        texts = [
+            e.get("text", "").strip()
+            for e in recent_emotions[:limit]
+            if e.get("text", "").strip()
+        ]
+        if not texts:
+            return "(기록 내용 없음)"
+        return "\n".join(f"- {t}" for t in texts)
+
     def _format_context(self, reason: str, context: Dict[str, Any]) -> tuple[Dict[str, Any], str]:
+        recent_memories = self._extract_recent_memories(context.get("recent_emotions", []))
+
         if reason == "no_recent_record":
             formatted = {
                 "days_since": context.get("days_since_last_record", 3),
                 "last_emotion": EMOTION_NAMES_KR.get(
                     context.get("last_emotion", "good"),
                     "알 수 없음"
-                )
+                ),
+                "recent_memories": recent_memories,
             }
             return formatted, "no_recent_record"
 
@@ -93,7 +106,10 @@ class MessageGenerator:
             if consecutive >= 3:
                 formatted = {
                     "consecutive_count": consecutive,
-                    "recent_emotions": format_emotion_list(context.get("recent_emotions", []))
+                    "recent_emotions": format_emotion_list(
+                        [e.get("emotion_name", "") for e in context.get("recent_emotions", [])]
+                    ),
+                    "recent_memories": recent_memories,
                 }
                 return formatted, "negative_pattern"
             else:
@@ -102,14 +118,18 @@ class MessageGenerator:
                     "total_count": context.get("total_count", 0),
                     "emotion_distribution": format_emotion_distribution(
                         context.get("emotion_distribution", {})
-                    )
+                    ),
+                    "recent_memories": recent_memories,
                 }
                 return formatted, "negative_ratio"
 
         elif reason == "positive_reinforcement":
             formatted = {
                 "consecutive_count": context.get("consecutive_positive", 0),
-                "recent_emotions": format_emotion_list(context.get("recent_emotions", []))
+                "recent_emotions": format_emotion_list(
+                    [e.get("emotion_name", "") for e in context.get("recent_emotions", [])]
+                ),
+                "recent_memories": recent_memories,
             }
             return formatted, "positive_reinforcement"
 
@@ -121,16 +141,16 @@ class MessageGenerator:
 
         if reason == "no_recent_record":
             days = context.get("days_since_last_record", 3)
-            return f"요즘 어때? {days}일 동안 소식이 없었네! 궁금해 😊"
+            return f"요즘 어때? {days}일 동안 소식이 없었네."
         elif reason == "negative_pattern":
             consecutive = context.get("consecutive_negative", 0)
             if consecutive >= 3:
-                return "요즘 힘든 일이 계속되는 것 같아. 괜찮아? 💙"
-            return "최근에 많이 힘들어 보여. 무슨 일 있어? 🤗"
+                return "요즘 힘든 일이 계속되는 것 같아. 괜찮아?"
+            return "최근에 많이 힘들어 보여. 무슨 일 있어?"
         elif reason == "positive_reinforcement":
-            return "좋은 일들이 계속되고 있네! 축하해 🎉"
+            return "좋은 일들이 계속되고 있네. 잘 되고 있어."
 
-        return "안녕? 오늘 하루 어때? 😊"
+        return "안녕? 오늘 하루 어때?"
 
     def generate_with_validation(
         self,
