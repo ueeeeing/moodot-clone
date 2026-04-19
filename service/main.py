@@ -30,6 +30,7 @@ from models import (
 from rules import RuleEngine
 from config import LLMFactory
 from generators import MessageGenerator
+from scoring import calculate_score, save_score
 
 # 전역 변수
 intervention_repo: Optional['InterventionRepository'] = None
@@ -330,6 +331,20 @@ async def handle_new_emotion(supabase, payload: Dict[str, Any]) -> None:
         logger.error(f"❌ 이벤트 처리 중 에러: {e}", exc_info=True)
 
 
+async def handle_feedback_inserted(supabase, payload: Dict[str, Any]) -> None:
+    """피드백 INSERT 시 총점 계산 후 interventions.feedback_score 업데이트"""
+    try:
+        record = payload.get("record", {})
+        intervention_id = record.get("intervention_id")
+        if not intervention_id:
+            return
+
+        score = await calculate_score(supabase, intervention_id)
+        await save_score(supabase, intervention_id, score)
+    except Exception as e:
+        logger.error(f"❌ 피드백 처리 실패: {e}", exc_info=True)
+
+
 async def process_missed_emotions(supabase) -> None:
     """워커가 다운되었을 때 놓친 감정 처리 (안전장치)"""
     logger.info("🔍 놓친 감정 확인 중...")
@@ -446,6 +461,18 @@ async def main() -> None:
                 callback=lambda payload: on_postgres_changes(supabase, payload)
             )
             await channel.subscribe()
+
+            feedback_channel = supabase.channel('feedback_events')
+            feedback_channel.on_postgres_changes(
+                event='INSERT',
+                schema='public',
+                table='intervention_feedback',
+                callback=lambda payload: asyncio.get_running_loop().create_task(
+                    handle_feedback_inserted(supabase, payload)
+                )
+            )
+            await feedback_channel.subscribe()
+
             logger.info("✅ Realtime 구독 시작!")
             logger.info("👂 이벤트 대기 중... (Ctrl+C로 종료)")
             break
