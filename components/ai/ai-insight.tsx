@@ -6,6 +6,7 @@ import { Character } from "@/components/ai/character"
 import {
   getLatestPendingIntervention,
   markInterventionAsShown,
+  submitFeedback,
   type Intervention,
 } from "@/lib/services/intervention"
 import { getRecentMemories } from "@/lib/services/memory"
@@ -36,6 +37,33 @@ const EMOTION_BUBBLE_COLOR: Record<number, string> = {
 }
 const DEFAULT_BUBBLE_COLOR = "#B8CADC"
 
+type FeedbackVariant = {
+  prompt: string
+  positive: string
+  negative: string
+}
+
+const FEEDBACK_VARIANTS: Record<string, [FeedbackVariant, FeedbackVariant]> = {
+  empathy: [
+    { prompt: "이렇게 느껴졌을 수도 있겠다 싶었어.", positive: "비슷한 것 같아", negative: "조금 달라" },
+    { prompt: "나는 이렇게 이해했는데… 맞을까는 모르겠네.", positive: "맞는 편이야", negative: "다른 느낌이야" },
+  ],
+  encouragement: [
+    { prompt: "조금 힘이 됐으면 좋겠다고 생각했어.", positive: "도움 됐어", negative: "잘 모르겠어" },
+    { prompt: "이런 말이 괜찮은 타이밍이었을까 싶긴 해.", positive: "괜찮았어", negative: "지금은 아닌 것 같아" },
+  ],
+  checkin: [
+    { prompt: "그냥 가볍게 한 번 말 걸어봤어.", positive: "괜찮았어", negative: "조금 뜬금없었어" },
+    { prompt: "이 정도로 인사하는 건 괜찮은지 궁금하네.", positive: "이 정도 좋아", negative: "조금 줄여도 될 것 같아" },
+  ],
+}
+
+const FEEDBACK_RESPONSES: Record<string, { positive: string; negative: string }> = {
+  empathy:       { positive: "응, 비슷하게 느꼈다면 다행이다.", negative: "아, 내가 조금 다르게 이해했나 보다." },
+  encouragement: { positive: "조금이라도 괜찮았으면 좋겠네.", negative: "지금은 그런 말이 아닐 수도 있겠다." },
+  checkin:       { positive: "가볍게 남긴 건데 괜찮았다니 다행이다.", negative: "조금 뜬금없었을 수도 있겠다." },
+}
+
 function FloatingBubbles({ color }: { color: string }) {
   return (
     <>
@@ -59,10 +87,12 @@ export function AIInsight() {
   const [intervention, setIntervention] = useState<Intervention | null>(null)
   const [latestEmotionId, setLatestEmotionId] = useState<number | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [feedbackGiven, setFeedbackGiven] = useState(false)
+  const [feedbackResponse, setFeedbackResponse] = useState<string | null>(null)
 
   // 초기 로드
   useEffect(() => {
-    getLatestPendingIntervention().then((data) => {
+getLatestPendingIntervention().then((data) => {
       if (data) setIntervention(data)
     })
 
@@ -97,15 +127,31 @@ export function AIInsight() {
 
   const bg = (isLoading || latestEmotionId == null || !EMOTION_BG[latestEmotionId]) ? DEFAULT_BG : EMOTION_BG[latestEmotionId]
 
+  const variantIdx = intervention ? parseInt(intervention.id.slice(-1), 16) % 2 : 0
+
   const handleCardClick = () => {
     if (!intervention) return
     if (showMessage) {
       setShowMessage(false)
-      setTimeout(() => setIntervention(null), 600)
+      setTimeout(() => {
+        setIntervention(null)
+        setFeedbackGiven(false)
+        setFeedbackResponse(null)
+      }, 600)
     } else {
       setShowMessage(true)
       markInterventionAsShown(intervention.id)
     }
+  }
+
+  const handleFeedback = (e: React.MouseEvent, score: 2 | -2) => {
+    e.stopPropagation()
+    if (!intervention) return
+    submitFeedback(intervention.id, score)
+    const type = intervention.message_type ?? "checkin"
+    const responses = FEEDBACK_RESPONSES[type] ?? FEEDBACK_RESPONSES.checkin
+    setFeedbackResponse(score === 2 ? responses.positive : responses.negative)
+    setFeedbackGiven(true)
   }
 
   return (
@@ -142,7 +188,7 @@ export function AIInsight() {
 
           {/* 뒷면 — 메시지 */}
           <div
-            className="absolute inset-0 overflow-hidden rounded-xl p-5 border flex items-center justify-center transition-colors duration-700"
+            className="absolute inset-0 overflow-hidden rounded-xl p-5 border flex flex-col items-center justify-center gap-4 transition-colors duration-700"
             style={{ background: bg.gradient, borderColor: bg.border, backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
           >
             <div
@@ -150,8 +196,34 @@ export function AIInsight() {
               style={{ background: bg.glow }}
             />
             <p className="relative font-body text-sm text-mb-dark leading-relaxed text-center">
-              {intervention?.message}
+              {feedbackGiven ? feedbackResponse : intervention?.message}
             </p>
+            {!feedbackGiven && intervention?.message_type && (() => {
+              const variants = FEEDBACK_VARIANTS[intervention.message_type]
+              const variant = variants?.[variantIdx] ?? variants?.[0]
+              if (!variant) return null
+              return (
+                <div className="relative flex flex-col items-center gap-2 w-full">
+                  <p className="font-body text-xs text-mb-dark/50 text-center">{variant.prompt}</p>
+                  <div className="flex gap-3">
+                    <button
+                      className="px-3 py-1 rounded-full text-xs font-body border transition-colors"
+                      style={{ borderColor: bg.border, color: "var(--color-mb-dark)" }}
+                      onClick={(e) => handleFeedback(e, 2)}
+                    >
+                      {variant.positive}
+                    </button>
+                    <button
+                      className="px-3 py-1 rounded-full text-xs font-body border transition-colors"
+                      style={{ borderColor: bg.border, color: "var(--color-mb-dark)" }}
+                      onClick={(e) => handleFeedback(e, -2)}
+                    >
+                      {variant.negative}
+                    </button>
+                  </div>
+                </div>
+              )
+            })()}
           </div>
         </motion.div>
       </div>

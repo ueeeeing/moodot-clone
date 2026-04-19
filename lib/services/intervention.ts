@@ -41,3 +41,22 @@ export async function markInterventionAsShown(id: string): Promise<void> {
 
   if (error) throw error
 }
+
+export async function submitFeedback(
+  interventionId: string,
+  explicitScore: 2 | -2
+): Promise<void> {
+  const supabase = getSupabaseBrowserClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+
+  const { error } = await supabase
+    .from("intervention_feedback")
+    .insert({
+      intervention_id: interventionId,
+      user_id: user.id,
+      explicit_score: explicitScore,
+    })
+
+  if (error) throw error
+}
