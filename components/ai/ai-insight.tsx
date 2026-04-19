@@ -58,6 +58,7 @@ export function AIInsight() {
   const [showMessage, setShowMessage] = useState(false)
   const [intervention, setIntervention] = useState<Intervention | null>(null)
   const [latestEmotionId, setLatestEmotionId] = useState<number | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
   // 초기 로드
   useEffect(() => {
@@ -74,6 +75,9 @@ export function AIInsight() {
       })
       .catch(() => {
         setLatestEmotionId(null)
+      })
+      .finally(() => {
+        setIsLoading(false)
       })
   }, [])
 
@@ -96,7 +100,7 @@ export function AIInsight() {
     return () => { supabase.removeChannel(channel) }
   }, [])
 
-  const bg = (latestEmotionId != null && EMOTION_BG[latestEmotionId]) ? EMOTION_BG[latestEmotionId] : DEFAULT_BG
+  const bg = (isLoading || latestEmotionId == null || !EMOTION_BG[latestEmotionId]) ? DEFAULT_BG : EMOTION_BG[latestEmotionId]
 
   const handleCardClick = () => {
     if (!intervention) return
@@ -136,7 +140,7 @@ export function AIInsight() {
                   color={latestEmotionId != null ? (EMOTION_BUBBLE_COLOR[latestEmotionId] ?? DEFAULT_BUBBLE_COLOR) : DEFAULT_BUBBLE_COLOR}
                 />
               )}
-              <Character emotionId={latestEmotionId} hasMessage={!!intervention} />
+              <Character emotionId={latestEmotionId} hasMessage={!!intervention} isThinking={isLoading} />
             </div>
           </div>
 
