@@ -42,6 +42,16 @@ export async function markInterventionAsShown(id: string): Promise<void> {
   if (error) throw error
 }
 
+export async function markInterventionAsInteracted(id: string): Promise<void> {
+  const supabase = getSupabaseBrowserClient()
+  const { error } = await supabase
+    .from("interventions")
+    .update({ status: "interacted" })
+    .eq("id", id)
+
+  if (error) throw error
+}
+
 export async function submitFeedback(
   interventionId: string,
   explicitScore: 2 | -2

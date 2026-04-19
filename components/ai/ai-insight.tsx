@@ -6,6 +6,7 @@ import { Character } from "@/components/ai/character"
 import {
   getLatestPendingIntervention,
   markInterventionAsShown,
+  markInterventionAsInteracted,
   submitFeedback,
   type Intervention,
 } from "@/lib/services/intervention"
@@ -148,6 +149,7 @@ getLatestPendingIntervention().then((data) => {
     e.stopPropagation()
     if (!intervention) return
     submitFeedback(intervention.id, score)
+    markInterventionAsInteracted(intervention.id)
     const type = intervention.message_type ?? "checkin"
     const responses = FEEDBACK_RESPONSES[type] ?? FEEDBACK_RESPONSES.checkin
     setFeedbackResponse(score === 2 ? responses.positive : responses.negative)
