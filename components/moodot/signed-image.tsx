@@ -40,10 +40,12 @@ export function SignedImage({ path, alt, className }: Props) {
       src={src}
       alt={alt}
       className={className}
+      loading="lazy"
+      decoding="async"
       onError={() => {
         if (hasRetried.current) return
         hasRetried.current = true
-        getSignedUrl(path)
+        getSignedUrl(path, true)
           .then(setSrc)
           .catch(() => setSrc(null))
       }}

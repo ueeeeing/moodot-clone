@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
 import { getRecentMemories, type MemoryRow } from "@/lib/services/memory"
+import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 
 const EMOTION_COLOR_MAP: Record<number, string> = {
   1: "#FFE8B8",
@@ -70,8 +71,12 @@ export function RecentReflections() {
 
   useEffect(() => {
     let mounted = true
+    let fetched = false
+    const supabase = getSupabaseBrowserClient()
 
-    const fetchMemories = async () => {
+    const doFetch = async () => {
+      if (fetched || !mounted) return
+      fetched = true
       try {
         const data = await getRecentMemories(2)
         if (!mounted) return
@@ -83,8 +88,20 @@ export function RecentReflections() {
       }
     }
 
-    void fetchMemories()
-    return () => { mounted = false }
+    // 이미 세션이 있으면 즉시 fetch
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) void doFetch()
+    })
+
+    // 세션 없을 때 AuthInit의 signInAnonymously 완료를 감지해 fetch
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) void doFetch()
+    })
+
+    return () => {
+      mounted = false
+      subscription.unsubscribe()
+    }
   }, [])
 
   return (

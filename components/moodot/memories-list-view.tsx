@@ -27,10 +27,15 @@ function formatMemoryDate(value: string | null) {
   })
 }
 
+const PAGE_SIZE = 10
+
 export function MemoriesListView() {
   const [memories, setMemories] = useState<MemoryRow[]>([])
   const [searchText, setSearchText] = useState("")
   const [isLoading, setIsLoading] = useState(true)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(false)
+  const [offset, setOffset] = useState(0)
   const [errorMessage, setErrorMessage] = useState("")
   const router = useRouter()
 
@@ -42,9 +47,11 @@ export function MemoriesListView() {
       setErrorMessage("")
 
       try {
-        const data = await getMemories()
+        const data = await getMemories(PAGE_SIZE, 0)
         if (!mounted) return
         setMemories(data)
+        setOffset(PAGE_SIZE)
+        setHasMore(data.length === PAGE_SIZE)
       } catch (error) {
         if (!mounted) return
         const message = error instanceof Error ? error.message : "메모리를 불러오지 못했습니다."
@@ -59,6 +66,22 @@ export function MemoriesListView() {
       mounted = false
     }
   }, [])
+
+  const handleLoadMore = async () => {
+    if (isLoadingMore) return
+    setIsLoadingMore(true)
+    try {
+      const data = await getMemories(PAGE_SIZE, offset)
+      setMemories((prev) => [...prev, ...data])
+      setOffset((prev) => prev + PAGE_SIZE)
+      setHasMore(data.length === PAGE_SIZE)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "메모리를 불러오지 못했습니다."
+      setErrorMessage(`메모리 조회 실패: ${message}`)
+    } finally {
+      setIsLoadingMore(false)
+    }
+  }
 
   const filteredMemories =
     searchText.trim() === ""
@@ -147,6 +170,18 @@ export function MemoriesListView() {
               </article>
             )
           })}
+          {searchText.trim() === "" && hasMore && (
+            <div className="flex justify-center pt-2 pb-4">
+              <button
+                type="button"
+                onClick={handleLoadMore}
+                disabled={isLoadingMore}
+                className="h-10 rounded-full border border-mb-muted/30 bg-mb-card px-6 font-body text-sm text-mb-muted transition-opacity duration-200 disabled:opacity-50"
+              >
+                {isLoadingMore ? "Loading..." : "Load more"}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </section>

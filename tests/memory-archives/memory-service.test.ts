@@ -1,0 +1,77 @@
+import { beforeEach, describe, expect, it, vi } from "vitest"
+
+import { getMemories, getMemoryById } from "@/lib/services/memory"
+
+describe("memory service", () => {
+  const fetchMock = vi.fn<typeof fetch>()
+
+  beforeEach(() => {
+    fetchMock.mockReset()
+    vi.stubGlobal("fetch", fetchMock)
+  })
+
+  it("getMemories 는 limit 와 offset query 를 포함한 URL로 호출한다", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify([{ id: 1 }]), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    )
+
+    await getMemories(10, 20)
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/memories?limit=10&offset=20",
+      expect.objectContaining({
+        cache: "no-store",
+      }),
+    )
+  })
+
+  it("getMemories 는 limit 가 없으면 기본 목록 URL을 호출한다", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify([]), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    )
+
+    await getMemories()
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/memories",
+      expect.objectContaining({
+        cache: "no-store",
+      }),
+    )
+  })
+
+  it("getMemoryById 는 단건 API URL을 호출한다", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ id: 7 }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    )
+
+    await getMemoryById(7)
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/memories/7",
+      expect.objectContaining({
+        cache: "no-store",
+      }),
+    )
+  })
+
+  it("API 가 에러 응답을 주면 에러 메시지를 그대로 던진다", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: "메모리 조회 실패: 인증이 필요합니다." }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      }),
+    )
+
+    await expect(getMemoryById(3)).rejects.toThrow("메모리 조회 실패: 인증이 필요합니다.")
+  })
+})
