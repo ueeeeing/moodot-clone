@@ -35,6 +35,7 @@ export async function GET(request: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser()
     const limitParam = request.nextUrl.searchParams.get("limit")
+    const offsetParam = request.nextUrl.searchParams.get("offset")
 
     if (!user) {
       return jsonError("인증이 필요합니다.", 401)
@@ -48,8 +49,9 @@ export async function GET(request: NextRequest) {
 
     if (limitParam) {
       const limit = Number.parseInt(limitParam, 10)
+      const offset = offsetParam ? Math.max(0, Number.parseInt(offsetParam, 10)) : 0
       if (Number.isFinite(limit) && limit > 0) {
-        query = query.limit(limit)
+        query = query.range(offset, offset + limit - 1)
       }
     }
 

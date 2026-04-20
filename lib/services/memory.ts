@@ -84,8 +84,12 @@ async function requestJson<T>(input: string, init?: RequestInit): Promise<T> {
 
 // ---------- Queries ----------
 
-/** 전체 목록 (memory_at 내림차순). 에러 시 throw. */
-export async function getMemories(): Promise<MemoryRow[]> {
+/** 목록 조회 (memory_at 내림차순). limit/offset 미전달 시 전체 반환. 에러 시 throw. */
+export async function getMemories(limit?: number, offset?: number): Promise<MemoryRow[]> {
+  if (limit !== undefined) {
+    const params = new URLSearchParams({ limit: String(limit), offset: String(offset ?? 0) })
+    return requestJson<MemoryRow[]>(`/api/memories?${params.toString()}`)
+  }
   return requestJson<MemoryRow[]>("/api/memories")
 }
 
