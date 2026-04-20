@@ -17,3 +17,8 @@ def sanitize(text: str) -> str:
     for pattern, placeholder in _PATTERNS:
         text = pattern.sub(placeholder, text)
     return text
+
+
+def contains_pii(text: str) -> bool:
+    """텍스트에 PII 패턴이 포함되어 있으면 True"""
+    return any(pattern.search(text) for pattern, _ in _PATTERNS)
