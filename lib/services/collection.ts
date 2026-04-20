@@ -62,6 +62,56 @@ type CollectionDetailRow = CollectionRow & {
   cover_memory: CoverMemory
 }
 
+type MemoryTextsResponse = {
+  texts?: Record<string, string | null>
+}
+
+type MemoryRowWithoutText = Omit<MemoryRow, "text">
+type CollectionMemoryJoinRow = {
+  position: number
+  memories: MemoryRowWithoutText | MemoryRowWithoutText[]
+}
+
+async function getErrorMessage(response: Response) {
+  try {
+    const data = (await response.json()) as { error?: string }
+    if (typeof data.error === "string" && data.error.trim() !== "") {
+      return data.error
+    }
+  } catch {
+    // ignore
+  }
+
+  return `요청이 실패했습니다. (${response.status})`
+}
+
+async function fetchMemoryTextMap(memoryIds: number[]): Promise<Record<number, string | null>> {
+  if (memoryIds.length === 0) return {}
+
+  const response = await fetch("/api/memories/texts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids: memoryIds }),
+    cache: "no-store",
+  })
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response))
+  }
+
+  const data = (await response.json()) as MemoryTextsResponse
+  const textMap: Record<number, string | null> = {}
+
+  Object.entries(data.texts ?? {}).forEach(([id, text]) => {
+    const numericId = Number(id)
+    if (Number.isInteger(numericId)) {
+      textMap[numericId] = text
+    }
+  })
+
+  return textMap
+}
+
 // ---------- Queries ----------
 
 /** 전체 컬렉션 목록 (생성일 내림차순) */
@@ -102,18 +152,23 @@ export async function getCollectionById(id: string): Promise<CollectionWithMemor
   const { data: joins, error: joinsError } = await supabase
     .from("collection_memories")
     .select(
-      "position, memories(id, title, text, image_url, emotion_id, with_whom, memory_at, place_name, location_label, location_lat, location_lng)"
+      "position, memories(id, title, image_url, emotion_id, with_whom, memory_at, place_name, location_label, location_lat, location_lng)"
     )
     .eq("collection_id", id)
     .order("position", { ascending: true })
   if (joinsError) throw joinsError
 
-  const memories: MemoryInCollection[] = (joins ?? []).map(
-    (j: { position: number; memories: MemoryRow | MemoryRow[] }) => {
+  const memoryBases = ((joins ?? []) as CollectionMemoryJoinRow[]).map(
+    (j) => {
       const mem = Array.isArray(j.memories) ? j.memories[0] : j.memories
-      return { ...mem, position: j.position }
+      return { ...(mem as MemoryRowWithoutText), position: j.position }
     }
   )
+  const textMap = await fetchMemoryTextMap(memoryBases.map((memory) => memory.id))
+  const memories: MemoryInCollection[] = memoryBases.map((memory) => ({
+    ...memory,
+    text: textMap[memory.id] ?? null,
+  }))
 
   const { cover_memory, ...rest } = row as CollectionDetailRow
 
@@ -150,11 +205,16 @@ export async function getAvailableMemories(
 
   const { data: memories, error } = await supabase
     .from("memories")
-    .select("id, title, text, image_url, emotion_id, with_whom, memory_at, place_name")
+    .select("id, title, image_url, emotion_id, with_whom, memory_at, place_name")
     .order("memory_at", { ascending: false })
   if (error) throw error
 
-  const all = (memories ?? []) as MemoryRow[]
+  const bases = (memories ?? []) as MemoryRowWithoutText[]
+  const textMap = await fetchMemoryTextMap(bases.map((memory) => memory.id))
+  const all = bases.map((memory) => ({
+    ...memory,
+    text: textMap[memory.id] ?? null,
+  })) as MemoryRow[]
   if (excludedIds.length === 0) return all
   return all.filter((m) => !excludedIds.includes(m.id))
 }

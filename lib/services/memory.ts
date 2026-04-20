@@ -42,41 +42,62 @@ export type UpdateMemoryInput = {
   place_name: string | null
 }
 
+type ApiErrorResponse = {
+  error?: string
+}
+
+async function getErrorMessage(response: Response) {
+  try {
+    const data = (await response.json()) as ApiErrorResponse
+    if (typeof data.error === "string" && data.error.trim() !== "") {
+      return data.error
+    }
+  } catch {
+    // 응답 본문이 JSON이 아니어도 기존 흐름 유지
+  }
+
+  return `요청이 실패했습니다. (${response.status})`
+}
+
+async function requestJson<T>(input: string, init?: RequestInit): Promise<T> {
+  const headers = new Headers(init?.headers)
+  if (init?.body && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json")
+  }
+
+  const response = await fetch(input, {
+    ...init,
+    headers,
+    cache: "no-store",
+  })
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response))
+  }
+
+  if (response.status === 204) {
+    return undefined as T
+  }
+
+  return (await response.json()) as T
+}
+
 // ---------- Queries ----------
 
 /** 전체 목록 (memory_at 내림차순). 에러 시 throw. */
 export async function getMemories(): Promise<MemoryRow[]> {
-  const supabase = getSupabaseBrowserClient()
-  const { data, error } = await supabase
-    .from("memories")
-    .select("id,title,text,emotion_id,with_whom,memory_at")
-    .order("memory_at", { ascending: false })
-  if (error) throw error
-  return (data as MemoryRow[]) ?? []
+  return requestJson<MemoryRow[]>("/api/memories")
 }
 
 /** 최신 N개 (memory_at 내림차순). 에러 시 throw. */
 export async function getRecentMemories(limit: number): Promise<MemoryRow[]> {
-  const supabase = getSupabaseBrowserClient()
-  const { data, error } = await supabase
-    .from("memories")
-    .select("id,title,text,emotion_id,memory_at")
-    .order("memory_at", { ascending: false })
-    .limit(limit)
-  if (error) throw error
-  return (data as MemoryRow[]) ?? []
+  const params = new URLSearchParams({ limit: String(limit) })
+  return requestJson<MemoryRow[]>(`/api/memories?${params.toString()}`)
 }
 
 /** 단건 조회. 에러 시 throw. */
 export async function getMemoryById(id: number): Promise<MemoryRow> {
-  const supabase = getSupabaseBrowserClient()
-  const { data, error } = await supabase
-    .from("memories")
-    .select("id,title,text,image_url,emotion_id,with_whom,memory_at,place_name,location_label,location_lat,location_lng")
-    .eq("id", id)
-    .single()
-  if (error) throw error
-  return data as MemoryRow
+  return requestJson<MemoryRow>(`/api/memories/${id}`)
 }
 
 // ---------- Mutations ----------
@@ -103,25 +124,20 @@ export async function createMemory(input: CreateMemoryInput): Promise<number> {
   const { data: sessionData } = await supabase.auth.getSession()
   console.log("[createMemory] access_token:", sessionData.session?.access_token ? "있음" : "없음(MISSING)")
 
-  const { data, error } = await supabase
-    .from("memories")
-    .insert({ ...input, user_id: user.id } as unknown as never)
-    .select("id")
-    .single()
+  const data = await requestJson<{ id: number }>("/api/memories", {
+    method: "POST",
+    body: JSON.stringify(input),
+  })
 
-  if (error) {
-    console.error("[createMemory] insert error:", error.code, error.message)
-    throw error
-  }
-
-  return (data as { id: number }).id
+  return data.id
 }
 
 /** 기존 메모리 수정. 에러 시 throw. */
 export async function updateMemory(id: number, input: UpdateMemoryInput): Promise<void> {
-  const supabase = getSupabaseBrowserClient()
-  const { error } = await supabase.from("memories").update(input as unknown as never).eq("id", id)
-  if (error) throw error
+  await requestJson<void>(`/api/memories/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  })
 }
 
 /** 메모리 삭제. 에러 시 throw. */
