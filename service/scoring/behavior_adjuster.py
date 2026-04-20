@@ -27,14 +27,15 @@ async def get_feedback_trend(
     limit: int = 5
 ) -> Optional[float]:
     """
-    최근 scored intervention들의 평균 feedback_score 반환.
-    scored 기록이 없으면 None.
+    최근 shown/interacted intervention들의 평균 feedback_score 반환.
+    feedback_score가 NULL(피드백 없이 무시됨)이면 0점으로 처리.
+    shown 기록이 없으면 None.
     """
     try:
         result = await supabase.table("interventions") \
             .select("feedback_score") \
             .eq("user_id", user_id) \
-            .not_.is_("feedback_score", "null") \
+            .in_("status", ["shown", "interacted"]) \
             .order("created_at", desc=True) \
             .limit(limit) \
             .execute()
@@ -43,9 +44,9 @@ async def get_feedback_trend(
         if not rows:
             return None
 
-        scores = [r["feedback_score"] for r in rows if r.get("feedback_score") is not None]
-        avg = sum(scores) / len(scores) if scores else None
-        logger.debug(f"피드백 트렌드: user={user_id}, avg={avg:.2f} ({len(scores)}개)")
+        scores = [r.get("feedback_score") or 0 for r in rows]
+        avg = sum(scores) / len(scores)
+        logger.debug(f"피드백 트렌드: user={user_id}, avg={avg:.2f} ({len(scores)}개, 무시={sum(1 for r in rows if r.get('feedback_score') is None)}개)")
         return avg
 
     except Exception as e:
