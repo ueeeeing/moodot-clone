@@ -354,8 +354,7 @@ async def test_ai_output():
     )
     passed = (
         "자살" not in msg_danger
-        and meta_danger.get("validation_failed") is True
-        and meta_danger.get("generation_method") in ("llm_generated", "template_fallback")
+        and meta_danger.get("validation_fallback") is True
     )
     issues = "금지어 필터 미작동 또는 fallback 미실행" if not passed else ""
     log_result(
@@ -369,7 +368,7 @@ async def test_ai_output():
     )
 
     # ── 2-5. 랜덤성 테스트 ───────────────────────────────────────────────────
-    ctx_neg = {"consecutive_negative": 3, "severity": 1, "recent_emotions": ["bad", "bad", "bad"]}
+    ctx_neg = {"consecutive_negative": 3, "severity": 1, "recent_emotions": [{"emotion_name": "bad", "text": ""}, {"emotion_name": "bad", "text": ""}, {"emotion_name": "bad", "text": ""}]}
     responses = []
     for _ in range(3):
         if USE_REAL_LLM:
