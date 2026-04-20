@@ -81,7 +81,9 @@ export async function GET(
     console.log(`[perf][memories/detail] decrypt: ${Date.now() - t4}ms`)
 
     console.log(`[perf][memories/detail] total: ${Date.now() - t0}ms`)
-    return NextResponse.json(row)
+    return NextResponse.json(row, {
+      headers: { "Cache-Control": "private, max-age=30" },
+    })
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "메모리를 불러오지 못했습니다."
