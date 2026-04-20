@@ -82,6 +82,7 @@ export function TopAppBar() {
             width={100}
             height={40}
             className="h-20 w-auto translate-y-1.5"
+            sizes="100px"
             priority
           />
         </div>
