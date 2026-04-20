@@ -47,6 +47,7 @@ export async function getCalendarRecords(): Promise<CalendarMoodRecord[]> {
       records.push({
         id: memory.id,
         date,
+        memoryAt: memory.memory_at ?? undefined,
         mood,
         note: memory.text ?? memory.title ?? undefined,
       })
