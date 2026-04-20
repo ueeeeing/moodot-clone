@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Search, User, Users, Plus } from "lucide-react"
 import { getMemories, type MemoryRow } from "@/lib/services/memory"
+import { MemoriesExportButton } from "@/components/moodot/memories-export-button"
 
 const EMOTION_COLOR_MAP: Record<number, string> = {
   1: "#FFE8B8",
@@ -95,15 +96,18 @@ export function MemoriesListView() {
 
   return (
     <section className="pt-6">
-      <div className="relative mb-4">
-        <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-mb-muted" />
-        <input
-          type="text"
-          value={searchText}
-          onChange={(e) => setSearchText(e.target.value)}
-          placeholder="Search your memories..."
-          className="h-14 w-full rounded-xl bg-mb-card pl-11 pr-4 font-body text-sm text-mb-dark outline-none transition-all duration-200 placeholder:text-mb-muted focus:ring-2 focus:ring-mb-accent-cyan/50"
-        />
+      <div className="flex gap-2 mb-4">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-mb-muted" />
+          <input
+            type="text"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            placeholder="Search your memories..."
+            className="h-14 w-full rounded-xl bg-mb-card pl-11 pr-4 font-body text-sm text-mb-dark outline-none transition-all duration-200 placeholder:text-mb-muted focus:ring-2 focus:ring-mb-accent-cyan/50"
+          />
+        </div>
+        <MemoriesExportButton memories={memories} disabled={isLoading} />
       </div>
 
       {/* 기록 남기기 버튼 */}

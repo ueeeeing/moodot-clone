@@ -6,6 +6,7 @@ import type { LeafletMap, LeafletMarker } from "@/types/leaflet"
 import { Smile, Frown, CloudRain, Leaf, User, Users, MapPin, Pencil } from "lucide-react"
 import { getMemoryById, type MemoryRow } from "@/lib/services/memory"
 import { SignedImage } from "@/components/moodot/signed-image"
+import { MemoryExportDrawer } from "@/components/moodot/memory-export-drawer"
 
 
 let leafletLoader: Promise<void> | null = null
@@ -237,6 +238,9 @@ export function MemoryDetail({ id }: { id: number }) {
         <Pencil className="w-4 h-4" />
         수정하기
       </button>
+
+      {/* 내보내기 */}
+      <MemoryExportDrawer memory={memory} />
     </div>
   )
 }
