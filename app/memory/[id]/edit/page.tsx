@@ -8,11 +8,12 @@ import {
   Clock3, ChevronRight, ImagePlus, MapPinned, Trash2,
 } from "lucide-react"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
+import { compressImage } from "@/lib/image-compression"
 import { uploadImage, getSignedUrl } from "@/lib/storage/image"
 import { getMemoryById, updateMemory, deleteMemory } from "@/lib/services/memory"
 import { BottomNavigation } from "@/components/moodot/bottom-navigation"
 
-
+// ─── Leaflet loader (모듈 수준 싱글턴) ──────────────────────────────────────
 let leafletLoader: Promise<void> | null = null
 function loadLeafletAssets(): Promise<void> {
   if (typeof window === "undefined") return Promise.resolve()
@@ -58,7 +59,7 @@ async function reverseGeocode(lat: number, lng: number): Promise<string> {
   }
 }
 
-// --- Types ---
+// ─── Types ───────────────────────────────────────────────────────────────────
 type MoodType = "good" | "bad" | "sad" | "calm"
 type WithType = "solo" | "together"
 type UploadStatus = "idle" | "uploading" | "success" | "failed"
@@ -81,46 +82,42 @@ function toDatetimeLocal(iso: string | null): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
+// ─── Component ───────────────────────────────────────────────────────────────
 export default function EditMemoryPage() {
-  const params  = useParams<{ id: string }>()
-  const router  = useRouter()
+  const params   = useParams<{ id: string }>()
+  const router   = useRouter()
   const memoryId = Number(params.id)
 
   // form state
-  const [mood,          setMood]          = useState<MoodType>("good")
-  const [withWho,       setWithWho]       = useState<WithType>("solo")
-  const [memoryAt,      setMemoryAt]      = useState("")
-  const [title,         setTitle]         = useState("")
-  const [text,          setText]          = useState("")
-  const [imageUrl,      setImageUrl]      = useState<string | null>(null)
+  const [mood,            setMood]            = useState<MoodType>("good")
+  const [withWho,         setWithWho]         = useState<WithType>("solo")
+  const [memoryAt,        setMemoryAt]        = useState("")
+  const [title,           setTitle]           = useState("")
+  const [text,            setText]            = useState("")
+  const [imageUrl,        setImageUrl]        = useState<string | null>(null)
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null)
-  const [uploadStatus,  setUploadStatus]  = useState<UploadStatus>("idle")
-  const [locationLabel, setLocationLabel] = useState("")
-  const [locationLat,   setLocationLat]   = useState<number | null>(null)
-  const [locationLng,   setLocationLng]   = useState<number | null>(null)
-  const [placeName,     setPlaceName]     = useState("")
-  const [isSaving,      setIsSaving]      = useState(false)
-  const [isLoading,     setIsLoading]     = useState(true)
-
-  // map state
-  const [isMapOpen,   setIsMapOpen]   = useState(false)
-  const [mapLoading,  setMapLoading]  = useState(false)
-  const [pendingLat,  setPendingLat]  = useState<number | null>(null)
-  const [pendingLng,  setPendingLng]  = useState<number | null>(null)
-  const [pendingLabel, setPendingLabel] = useState("")
+  const [uploadStatus,    setUploadStatus]    = useState<UploadStatus>("idle")
+  const [locationLabel,   setLocationLabel]   = useState("")
+  const [locationLat,     setLocationLat]     = useState<number | null>(null)
+  const [locationLng,     setLocationLng]     = useState<number | null>(null)
+  const [placeName,       setPlaceName]       = useState("")
+  const [isSaving,        setIsSaving]        = useState(false)
+  const [isLoading,       setIsLoading]       = useState(true)
+  const [mapLoading,      setMapLoading]      = useState(false)
 
   const datetimeInputRef  = useRef<HTMLInputElement>(null)
   const fileInputRef      = useRef<HTMLInputElement>(null)
   const mapContainerRef   = useRef<HTMLDivElement>(null)
   const mapRef            = useRef<LeafletMap | null>(null)
   const markerRef         = useRef<LeafletMarker | null>(null)
+  // 지도는 데이터 로드 후 1회만 초기화 — 위치 변경 시 마커만 업데이트
+  const mapInitializedRef = useRef(false)
 
-  // --- Load existing memory ---
+  // ── 기존 기록 로드 ──────────────────────────────────────────────────────────
   useEffect(() => {
     const load = async () => {
       try {
         const data = await getMemoryById(memoryId)
-
         setMood(EMOTION_ID_REVERSE[data.emotion_id ?? 1] ?? "good")
         setWithWho((data.with_whom ?? "Solo").toLowerCase() === "together" ? "together" : "solo")
         setMemoryAt(toDatetimeLocal(data.memory_at))
@@ -149,30 +146,29 @@ export default function EditMemoryPage() {
     void load()
   }, [memoryId, router])
 
-  // --- Map lifecycle ---
+  // ── 인라인 지도 초기화 (데이터 로드 완료 후 1회) ───────────────────────────
+  // locationLat/Lng는 deps에서 의도적으로 제외 — 마운트 시점 값을 한 번만 읽음
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (!isMapOpen) {
-      mapRef.current?.remove()
-      mapRef.current = null
-      markerRef.current = null
-      return
-    }
+    if (isLoading || mapInitializedRef.current) return
 
     let cancelled = false
 
     const initMap = async () => {
+      if (!mapContainerRef.current) return
       setMapLoading(true)
       try {
         await loadLeafletAssets()
         if (cancelled || !mapContainerRef.current || !window.L) return
 
         const L = window.L
-        const lat = locationLat ?? 37.5665
-        const lng = locationLng ?? 126.978
-        const zoom = locationLat && locationLng ? 15 : 17
+        const lat  = locationLat ?? 37.5665
+        const lng  = locationLng ?? 126.978
+        const zoom = locationLat !== null && locationLng !== null ? 15 : 12
 
         const map = L.map(mapContainerRef.current, { zoomControl: true }).setView([lat, lng], zoom)
         mapRef.current = map
+        mapInitializedRef.current = true
 
         L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
           attribution: "&copy; OpenStreetMap contributors",
@@ -181,26 +177,25 @@ export default function EditMemoryPage() {
 
         if (locationLat !== null && locationLng !== null) {
           markerRef.current = L.marker([locationLat, locationLng]).addTo(map)
-          setPendingLat(locationLat)
-          setPendingLng(locationLng)
-          setPendingLabel(locationLabel)
         }
 
+        // 지도 클릭 시 마커 이동 + 위치 상태 즉시 반영 (모달·확인 버튼 불필요)
         map.on("click", async (e: LeafletClickEvent) => {
           const { lat: clat, lng: clng } = e.latlng
-          setPendingLat(clat)
-          setPendingLng(clng)
           if (!markerRef.current) {
             markerRef.current = L.marker([clat, clng]).addTo(map)
           } else {
             markerRef.current.setLatLng([clat, clng])
           }
           const label = await reverseGeocode(clat, clng)
-          if (!cancelled) setPendingLabel(label)
+          if (!cancelled) {
+            setLocationLat(clat)
+            setLocationLng(clng)
+            setLocationLabel(label)
+          }
         })
-      } catch (e) {
-        alert(e instanceof Error ? e.message : "지도 로딩 실패")
-        setIsMapOpen(false)
+      } catch {
+        // 지도 로딩 실패 — 지도 영역 빈 상태 유지, 저장 차단 없음
       } finally {
         if (!cancelled) setMapLoading(false)
       }
@@ -208,9 +203,19 @@ export default function EditMemoryPage() {
 
     void initMap()
     return () => { cancelled = true }
-  }, [isMapOpen, locationLat, locationLng, locationLabel])
+  }, [isLoading])
 
-  // --- Helpers ---
+  // ── 언마운트 시 Leaflet 인스턴스 정리 ─────────────────────────────────────
+  useEffect(() => {
+    return () => {
+      mapRef.current?.remove()
+      mapRef.current = null
+      markerRef.current = null
+      mapInitializedRef.current = false
+    }
+  }, [])
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
   const memoryAtText = memoryAt === ""
     ? "날짜와 시간을 선택하세요"
     : new Date(memoryAt).toLocaleString("ko-KR", {
@@ -224,7 +229,8 @@ export default function EditMemoryPage() {
       const supabase = getSupabaseBrowserClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error("로그인이 필요합니다.")
-      const path = await uploadImage(file, user.id)
+      const uploadFile = await compressImage(file)
+      const path = await uploadImage(uploadFile, user.id)
       setImageUrl(path)
       setUploadStatus("success")
     } catch (e) {
@@ -233,15 +239,15 @@ export default function EditMemoryPage() {
     }
   }
 
-  const handleConfirmLocation = () => {
-    if (pendingLat === null || pendingLng === null) {
-      alert("지도에서 위치를 먼저 선택해 주세요.")
-      return
+  // 위치 초기화 — 마커 제거 + 상태 초기화
+  const handleClearLocation = () => {
+    if (markerRef.current) {
+      markerRef.current.remove()
+      markerRef.current = null
     }
-    setLocationLat(pendingLat)
-    setLocationLng(pendingLng)
-    setLocationLabel(pendingLabel || `${pendingLat.toFixed(6)}, ${pendingLng.toFixed(6)}`)
-    setIsMapOpen(false)
+    setLocationLat(null)
+    setLocationLng(null)
+    setLocationLabel("")
   }
 
   const handleDelete = async () => {
@@ -254,8 +260,8 @@ export default function EditMemoryPage() {
     }
   }
 
+  // 감정만 필수 — 나머지는 선택, memoryAt 빈값 시 현재 시각으로 대체
   const handleSave = async () => {
-    if (!memoryAt) { alert("날짜/시간을 선택해 주세요."); return }
     if (uploadStatus === "uploading") { alert("사진 업로드가 완료된 후 저장해 주세요."); return }
 
     setIsSaving(true)
@@ -266,7 +272,7 @@ export default function EditMemoryPage() {
         image_url:      imageUrl,
         emotion_id:     EMOTION_ID_MAP[mood],
         with_whom:      withWho === "solo" ? "Solo" : "Together",
-        memory_at:      new Date(memoryAt).toISOString(),
+        memory_at:      memoryAt ? new Date(memoryAt).toISOString() : new Date().toISOString(),
         location_lat:   locationLat,
         location_lng:   locationLng,
         location_label: locationLabel.trim() || null,
@@ -280,6 +286,7 @@ export default function EditMemoryPage() {
     }
   }
 
+  // ── Loading screen ─────────────────────────────────────────────────────────
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-mb-bg">
@@ -288,6 +295,7 @@ export default function EditMemoryPage() {
     )
   }
 
+  // ── Main render ────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-mb-bg text-mb-dark">
       {/* Header */}
@@ -349,7 +357,8 @@ export default function EditMemoryPage() {
 
         {/* 날짜 */}
         <section>
-          <button type="button" onClick={() => datetimeInputRef.current?.showPicker?.() ?? datetimeInputRef.current?.click()}
+          <button type="button"
+            onClick={() => datetimeInputRef.current?.showPicker?.() ?? datetimeInputRef.current?.click()}
             className="flex w-full items-center justify-between rounded-xl border border-[#AAB3B61A] bg-white px-4 py-4 shadow-[0px_2px_8px_rgba(43,52,54,0.02)]">
             <div className="flex items-center gap-3">
               <Clock3 className="h-4 w-4 text-[#AAB3B6]" />
@@ -403,20 +412,40 @@ export default function EditMemoryPage() {
             }} />
         </section>
 
-        {/* 위치 */}
-        <section>
-          <button type="button" onClick={() => setIsMapOpen(true)}
-            className="flex w-full items-center justify-between rounded-xl border border-[#AAB3B61A] bg-white px-4 py-4 shadow-[0px_2px_8px_rgba(43,52,54,0.02)]">
-            <div className="flex items-center gap-3">
-              <MapPinned className="h-4 w-4 text-[#AAB3B6]" />
-              <span className="text-[14px] font-semibold text-mb-dark">
-                {locationLabel || "지도에서 위치 선택"}
+        {/* 위치 — 항상 노출되는 인라인 지도 */}
+        <section className="flex flex-col gap-2">
+          {/* 현재 위치 레이블 + 초기화 버튼 */}
+          <div className="flex items-center justify-between rounded-xl border border-[#AAB3B61A] bg-white px-4 py-4 shadow-[0px_2px_8px_rgba(43,52,54,0.02)]">
+            <div className="flex min-w-0 items-center gap-3">
+              <MapPinned className="h-4 w-4 shrink-0 text-[#AAB3B6]" />
+              <span className="truncate text-[14px] font-semibold text-mb-dark">
+                {locationLabel || "지도를 탭하여 위치 선택"}
               </span>
             </div>
-            <ChevronRight className="h-4 w-4 text-[#AAB3B6]" />
-          </button>
+            {locationLat !== null && locationLng !== null && (
+              <button
+                type="button"
+                onClick={handleClearLocation}
+                className="ml-2 shrink-0 text-xs font-medium text-mb-muted transition-opacity hover:opacity-70"
+              >
+                초기화
+              </button>
+            )}
+          </div>
+
+          {/* 인라인 지도 컨테이너 — h-48(192px)으로 레이아웃 과하게 커지지 않게 고정 */}
+          <div className="relative h-48 overflow-hidden rounded-xl border border-[#AAB3B61A] bg-[#EFF4F6]">
+            {mapLoading && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center text-sm text-mb-muted">
+                지도 로딩 중...
+              </div>
+            )}
+            <div ref={mapContainerRef} className="h-full w-full" />
+          </div>
+          <p className="text-[11px] text-mb-muted">지도를 탭하면 위치가 바로 변경됩니다.</p>
         </section>
 
+        {/* 장소 별칭 — 위치 선택 시에만 표시 */}
         {locationLat !== null && locationLng !== null && (
           <section>
             <input type="text" placeholder="장소 별칭 입력 (예: 우리집, 회사)"
@@ -425,7 +454,7 @@ export default function EditMemoryPage() {
           </section>
         )}
 
-        {/* 저장 */}
+        {/* 저장 / 삭제 */}
         <section className="mt-2 flex flex-col gap-3">
           <button type="button" onClick={() => void handleSave()}
             disabled={isSaving || uploadStatus === "uploading"}
@@ -434,54 +463,14 @@ export default function EditMemoryPage() {
           </button>
           <button type="button" onClick={() => void handleDelete()}
             disabled={isSaving}
-            className="flex w-full items-center justify-center gap-2 h-14 rounded-full bg-[#F8C8C8]/35 font-heading text-[16px] font-semibold text-[#A65E5E] transition-all duration-200 hover:bg-[#F8C8C8]/55 active:scale-[0.99] disabled:opacity-50">
-            <Trash2 className="w-4 h-4" />
+            className="flex h-14 w-full items-center justify-center gap-2 rounded-full bg-[#F8C8C8]/35 font-heading text-[16px] font-semibold text-[#A65E5E] transition-all duration-200 hover:bg-[#F8C8C8]/55 active:scale-[0.99] disabled:opacity-50">
+            <Trash2 className="h-4 w-4" />
             기록 삭제
           </button>
         </section>
       </main>
 
       <BottomNavigation />
-
-      {/* 지도 모달 */}
-      {isMapOpen && (
-        <div className="fixed inset-0 z-[60] bg-black/35 px-5 py-8">
-          <div className="mx-auto flex h-full w-full max-w-[375px] flex-col rounded-2xl bg-mb-bg p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="font-heading text-base font-semibold text-mb-dark">지도에서 위치 선택</h3>
-              <button type="button" onClick={() => setIsMapOpen(false)} className="text-mb-muted">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="relative flex-1 overflow-hidden rounded-xl border border-[#AAB3B61A] bg-white">
-              {mapLoading && (
-                <div className="absolute inset-0 flex items-center justify-center text-sm text-mb-muted">
-                  지도 로딩 중...
-                </div>
-              )}
-              <div ref={mapContainerRef} className="h-full w-full" />
-            </div>
-
-            <p className="mt-3 text-xs text-mb-muted">
-              {pendingLat !== null && pendingLng !== null
-                ? `선택 좌표: ${pendingLat.toFixed(6)}, ${pendingLng.toFixed(6)}`
-                : "지도에서 한 지점을 탭하세요."}
-            </p>
-
-            <div className="mt-4 flex gap-2">
-              <button type="button" onClick={() => setIsMapOpen(false)}
-                className="h-11 flex-1 rounded-full bg-[#EFF4F6] text-sm font-semibold text-mb-muted">
-                취소
-              </button>
-              <button type="button" onClick={handleConfirmLocation}
-                className="h-11 flex-1 rounded-full bg-[#7CC4D8] text-sm font-semibold text-white">
-                위치 선택 완료
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

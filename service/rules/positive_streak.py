@@ -14,8 +14,10 @@ class PositiveStreakRule(Rule):
     priority = 4  # 부정 규칙보다 낮은 우선순위
     name = "positive_streak"
 
-    def __init__(self, threshold: int = 3):
+    def __init__(self, threshold: int = 3, severity_2_at: int = 4, severity_3_at: int = 5):
         self.threshold = threshold
+        self.severity_2_at = severity_2_at
+        self.severity_3_at = severity_3_at
 
     async def check(self, context: Dict[str, Any]) -> bool:
         self.last_context = context
@@ -29,9 +31,9 @@ class PositiveStreakRule(Rule):
         """연속 개수로 심각도 판단"""
         consecutive = context.get('consecutive_positive', 0)
 
-        if consecutive >= 5:
+        if consecutive >= self.severity_3_at:
             return 3  # 장기 긍정 → 축하
-        elif consecutive >= 4:
+        elif consecutive >= self.severity_2_at:
             return 2  # 연속 긍정 → 밝은
         return 1      # 보통 → 격려
 

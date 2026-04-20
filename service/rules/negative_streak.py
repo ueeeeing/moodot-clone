@@ -14,8 +14,10 @@ class NegativeStreakRule(Rule):
     priority = 1  # 높은 우선순위 (긴급)
     name = "negative_streak"
     
-    def __init__(self, threshold: int = 3):
+    def __init__(self, threshold: int = 3, severity_2_at: int = 4, severity_3_at: int = 5):
         self.threshold = threshold
+        self.severity_2_at = severity_2_at
+        self.severity_3_at = severity_3_at
     
     async def check(self, context: Dict[str, Any]) -> bool:
         self.last_context = context  # 컨텍스트 저장
@@ -29,9 +31,9 @@ class NegativeStreakRule(Rule):
         """연속 개수로 심각도 판단"""
         consecutive = context.get('consecutive_negative', 0)
 
-        if consecutive >= 5:
+        if consecutive >= self.severity_3_at:
             return 3  # 심각
-        elif consecutive >= 4:
+        elif consecutive >= self.severity_2_at:
             return 2  # 중간
         return 1      # 보통
 

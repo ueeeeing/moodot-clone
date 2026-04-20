@@ -24,12 +24,6 @@ const EMOTION_COLOR_MAP: Record<number, string> = {
   4: "#C0ECD8",
 }
 
-const EMOTION_LABEL_MAP: Record<number, string> = {
-  1: "Good",
-  2: "Bad",
-  3: "Sad",
-  4: "Calm",
-}
 
 const GRADIENT_PLACEHOLDERS = [
   "from-mb-accent via-mb-accent-mint to-mb-accent-cyan",
@@ -69,7 +63,6 @@ function formatDateRange(start: string | null, end: string | null): string {
 
 function MemoryItem({ memory }: { memory: MemoryInCollection }) {
   const color = EMOTION_COLOR_MAP[memory.emotion_id ?? 1] ?? EMOTION_COLOR_MAP[1]
-  const emotionLabel = EMOTION_LABEL_MAP[memory.emotion_id ?? 1] ?? ""
   const lines = (memory.text ?? "").split("\n")
 
   return (
@@ -81,14 +74,8 @@ function MemoryItem({ memory }: { memory: MemoryInCollection }) {
       />
 
       <div className="rounded-xl bg-mb-card px-4 py-4 shadow-sm">
-        {/* 감정 + 시각 */}
+        {/* 시각 */}
         <div className="mb-2 flex items-center gap-2">
-          <span
-            className="rounded-full px-2.5 py-0.5 font-body text-[11px] font-bold"
-            style={{ backgroundColor: color, color: "#485058" }}
-          >
-            {emotionLabel}
-          </span>
           <span className="font-body text-[11px] text-mb-muted">
             {formatDateTime(memory.memory_at)}
           </span>

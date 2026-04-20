@@ -19,19 +19,21 @@ SYSTEM_PROMPT = """
 - 의학적 조언을 하지 마세요
 - 진단하거나 판단하지 마세요
 - 데이터에 없는 내용을 추측하지 마세요
-- 이모지를 적절히 사용하세요 (최대 1-2개)
+- 이모지를 사용하지 마세요
 """
 
 
 # ✅ InterventionReason에 맞게 수정된 템플릿들
 NO_RECENT_RECORD_TEMPLATE = PromptTemplate(
-    input_variables=["days_since", "last_emotion"],
+    input_variables=["days_since", "last_emotion", "recent_memories"],
     template="""
 {system_prompt}
 
 사용자 상황:
 - {days_since}일 동안 감정 기록을 하지 않았습니다
 - 마지막 감정: {last_emotion}
+- 최근 기록 내용:
+{recent_memories}
 
 한 문장으로 자연스럽게 말 걸어주세요:
 """
@@ -40,13 +42,15 @@ NO_RECENT_RECORD_TEMPLATE = PromptTemplate(
 
 # ✅ NEGATIVE_STREAK → NEGATIVE_PATTERN으로 변경
 NEGATIVE_PATTERN_TEMPLATE = PromptTemplate(
-    input_variables=["consecutive_count", "recent_emotions"],
+    input_variables=["consecutive_count", "recent_emotions", "recent_memories"],
     template="""
 {system_prompt}
 
 사용자 상황:
 - 최근 {consecutive_count}개의 감정이 부정적입니다 (bad, sad)
 - 최근 감정: {recent_emotions}
+- 최근 기록 내용:
+{recent_memories}
 
 공감하며 한 문장으로 말 걸어주세요:
 """
@@ -55,13 +59,15 @@ NEGATIVE_PATTERN_TEMPLATE = PromptTemplate(
 
 # ✅ POSITIVE_STREAK → POSITIVE_REINFORCEMENT로 변경
 POSITIVE_REINFORCEMENT_TEMPLATE = PromptTemplate(
-    input_variables=["consecutive_count", "recent_emotions"],
+    input_variables=["consecutive_count", "recent_emotions", "recent_memories"],
     template="""
 {system_prompt}
 
 사용자 상황:
 - 최근 {consecutive_count}개의 감정이 긍정적입니다 (good)
 - 최근 감정: {recent_emotions}
+- 최근 기록 내용:
+{recent_memories}
 
 격려하며 한 문장으로 말 걸어주세요:
 """
@@ -70,13 +76,15 @@ POSITIVE_REINFORCEMENT_TEMPLATE = PromptTemplate(
 
 # ✅ 부정 감정 비율 높을 때 템플릿 추가
 NEGATIVE_RATIO_TEMPLATE = PromptTemplate(
-    input_variables=["negative_ratio", "total_count", "emotion_distribution"],
+    input_variables=["negative_ratio", "total_count", "emotion_distribution", "recent_memories"],
     template="""
 {system_prompt}
 
 사용자 상황:
 - 최근 {total_count}개 감정 중 {negative_ratio}%가 부정적입니다
 - 감정 분포: {emotion_distribution}
+- 최근 기록 내용:
+{recent_memories}
 
 부담스럽지 않게 공감하며 한 문장으로 말 걸어주세요:
 """
