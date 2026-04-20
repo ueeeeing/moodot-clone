@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { getCurrentUser, signInWithGoogle, signOut } from "@/lib/supabase/auth"
+import { subscribeToAuth } from "@/lib/supabase/auth"
 import type { User } from "@supabase/supabase-js"
 
 function AuthAvatar() {
@@ -14,7 +14,7 @@ function AuthAvatar() {
   const router = useRouter()
 
   useEffect(() => {
-    getCurrentUser().then(setUser)
+    return subscribeToAuth(setUser)
   }, [])
 
   // 판단 전: 빈 아바타 자리 유지
@@ -29,10 +29,7 @@ function AuthAvatar() {
     return (
       <button
         type="button"
-        onClick={async () => {
-          try { await signInWithGoogle() }
-          catch { alert("로그인에 실패했습니다.") }
-        }}
+        onClick={() => router.push("/login")}
         aria-label="계정"
         className="h-10 w-10 rounded-full ring-2 ring-mb-unselected/60 bg-mb-card flex items-center justify-center hover:ring-mb-accent-mint/60 hover:bg-mb-unselected/50 transition-all duration-200"
       >
@@ -49,12 +46,8 @@ function AuthAvatar() {
   return (
     <button
       type="button"
-      onClick={async () => {
-        if (!confirm("로그아웃 하시겠습니까?")) return
-        await signOut()
-        window.location.reload()
-      }}
-      aria-label="로그아웃"
+      onClick={() => router.push("/profile")}
+      aria-label="프로필 및 설정"
       className="rounded-full ring-2 ring-mb-accent-mint/40 hover:opacity-80 transition-opacity duration-200"
     >
       <Avatar className="h-10 w-10">
