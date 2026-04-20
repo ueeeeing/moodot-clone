@@ -9,7 +9,12 @@ const BUCKET = "memory-images"
  */
 export async function uploadImage(file: File, userId: string): Promise<string> {
   const supabase = getSupabaseBrowserClient()
-  const ext = (file.name.split(".").pop() ?? "jpg").toLowerCase()
+  const dotIndex = file.name.lastIndexOf(".")
+  const nameExt = dotIndex > -1 && dotIndex < file.name.length - 1
+    ? file.name.slice(dotIndex + 1).toLowerCase()
+    : ""
+  const mimeExt = file.type.split("/")[1]?.split("+")[0]?.toLowerCase() ?? ""
+  const ext = nameExt || mimeExt || "jpg"
   const path = `${userId}/${Date.now()}-${crypto.randomUUID()}.${ext}`
 
   const { error } = await supabase.storage.from(BUCKET).upload(path, file)

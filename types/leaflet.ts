@@ -12,6 +12,7 @@ export type LeafletMap = {
 export type LeafletMarker = {
   addTo(map: LeafletMap): LeafletMarker
   setLatLng(latlng: [number, number]): void
+  remove(): void
 }
 
 export type LeafletTileLayer = {
