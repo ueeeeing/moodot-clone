@@ -45,6 +45,7 @@ function makeMemory(overrides: Partial<MemoryRow> = {}): MemoryRow {
     location_label: null,
     location_lat: null,
     location_lng: null,
+    processed: null,
     ...overrides,
   }
 }
