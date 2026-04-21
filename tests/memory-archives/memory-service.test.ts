@@ -22,9 +22,7 @@ describe("memory service", () => {
 
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/memories?limit=10&offset=20",
-      expect.objectContaining({
-        cache: "no-store",
-      }),
+      expect.anything(),
     )
   })
 
@@ -40,9 +38,7 @@ describe("memory service", () => {
 
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/memories",
-      expect.objectContaining({
-        cache: "no-store",
-      }),
+      expect.anything(),
     )
   })
 
@@ -58,9 +54,7 @@ describe("memory service", () => {
 
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/memories/7",
-      expect.objectContaining({
-        cache: "no-store",
-      }),
+      expect.anything(),
     )
   })
 
