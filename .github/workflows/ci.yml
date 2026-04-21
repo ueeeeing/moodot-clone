@@ -59,7 +59,5 @@ jobs:
           IMAGE_TAG: sha-${{ github.sha }}
         run: |
           docker build -t $REGISTRY/$REPOSITORY:$IMAGE_TAG \
-                       -t $REGISTRY/$REPOSITORY:latest \
                        -f service/Dockerfile service
           docker push $REGISTRY/$REPOSITORY:$IMAGE_TAG
-          docker push $REGISTRY/$REPOSITORY:latest
