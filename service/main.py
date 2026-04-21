@@ -1,11 +1,14 @@
 # main.py
 import os
-import asyncio
 import logging
+from contextlib import asynccontextmanager
+from typing import Dict, Any
+
 from dotenv import load_dotenv
 from supabase import acreate_client
-from typing import Dict, Any
-from datetime import datetime, timedelta
+from fastapi import FastAPI, BackgroundTasks
+from fastapi.responses import JSONResponse
+import uvicorn
 
 load_dotenv('.env.local')
 
@@ -21,84 +24,25 @@ from config import LLMFactory
 from generators import MessageGenerator
 from agents import Pipeline
 
+# ─── 전역 파이프라인 (lifespan에서 초기화) ────────────────────────────────────
+_pipeline: Pipeline | None = None
+
 
 async def create_supabase_client():
     client = await acreate_client(
         os.getenv("SUPABASE_URL"),
         os.getenv("SUPABASE_SERVICE_KEY")
     )
-    client.realtime.timeout = 30
     return client
 
 
-async def process_missed_emotions(supabase, pipeline: Pipeline) -> None:
-    """워커가 다운되었을 때 놓친 감정 처리 (안전장치)"""
-    logger.info("🔍 놓친 감정 확인 중...")
-    try:
-        one_minute_ago = (datetime.now() - timedelta(minutes=1)).isoformat()
-        result = await supabase.table('memories') \
-            .select('*') \
-            .eq('processed', False) \
-            .lt('created_at', one_minute_ago) \
-            .order('created_at') \
-            .limit(10) \
-            .execute()
+# ─── FastAPI lifespan (startup / shutdown) ────────────────────────────────────
 
-        missed = result.data if hasattr(result, 'data') else []
-        if not missed:
-            logger.info("✅ 놓친 감정 없음")
-            return
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global _pipeline
 
-        logger.warning(f"⚠️ 놓친 감정 {len(missed)}개 발견! 처리 시작...")
-        for emotion in missed:
-            await pipeline.process_emotion({'record': emotion})
-        logger.info("✅ 놓친 감정 처리 완료")
-
-    except Exception as e:
-        logger.error(f"❌ 놓친 감정 처리 실패: {e}", exc_info=True)
-
-
-async def periodic_check(supabase, pipeline: Pipeline) -> None:
-    """5분마다 놓친 감정 체크"""
-    while True:
-        await asyncio.sleep(5 * 60)
-        await process_missed_emotions(supabase, pipeline)
-
-
-async def initial_check(supabase, pipeline: Pipeline) -> None:
-    """초기 놓친 감정 체크 (5초 후)"""
-    await asyncio.sleep(5)
-    await process_missed_emotions(supabase, pipeline)
-
-
-async def health_server() -> None:
-    """Render Web Service용 최소 HTTP 서버"""
-    port = int(os.getenv("PORT", 8000))
-
-    async def handle(reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
-        try:
-            await asyncio.wait_for(reader.read(1024), timeout=5)
-            body = b'{"status":"ok"}'
-            writer.write(
-                b"HTTP/1.1 200 OK\r\n"
-                b"Content-Type: application/json\r\n"
-                b"Content-Length: " + str(len(body)).encode() + b"\r\n"
-                b"\r\n" + body
-            )
-            await writer.drain()
-        except Exception:
-            pass
-        finally:
-            writer.close()
-
-    server = await asyncio.start_server(handle, "0.0.0.0", port)
-    logger.info(f"🌐 Health server 시작: port={port}")
-    async with server:
-        await server.serve_forever()
-
-
-async def main() -> None:
-    logger.info("🚀 AI 에이전트 워커 시작...")
+    logger.info("🚀 AI Worker 시작...")
     logger.info(f"📡 Supabase URL: {os.getenv('SUPABASE_URL')}")
 
     supabase = await create_supabase_client()
@@ -113,51 +57,53 @@ async def main() -> None:
         message_generator = None
         logger.warning(f"⚠️ LLM 연결 실패 — 템플릿 메시지로 동작합니다: {e}")
 
-    pipeline = Pipeline(supabase, intervention_repo, rule_engine, message_generator)
+    _pipeline = Pipeline(supabase, intervention_repo, rule_engine, message_generator)
+    logger.info("✅ AI Worker 준비 완료 — HTTP 요청 대기 중")
 
-    max_retries = 3
-    for attempt in range(max_retries):
-        try:
-            emotion_channel = supabase.channel('emotion_events')
-            emotion_channel.on_postgres_changes(
-                event='INSERT',
-                schema='public',
-                table='memories',
-                callback=lambda payload: asyncio.get_running_loop().create_task(
-                    pipeline.process_emotion(payload)
-                )
-            )
-            await emotion_channel.subscribe()
+    yield
 
-            feedback_channel = supabase.channel('feedback_events')
-            feedback_channel.on_postgres_changes(
-                event='INSERT',
-                schema='public',
-                table='intervention_feedback',
-                callback=lambda payload: asyncio.get_running_loop().create_task(
-                    pipeline.process_feedback(payload)
-                )
-            )
-            await feedback_channel.subscribe()
+    logger.info("👋 AI Worker 종료됨")
 
-            logger.info("✅ Realtime 구독 시작!")
-            logger.info("👂 이벤트 대기 중... (Ctrl+C로 종료)")
-            break
-        except Exception as e:
-            logger.error(f"구독 실패 (시도 {attempt + 1}/{max_retries}): {e}")
-            if attempt == max_retries - 1:
-                raise
-            await asyncio.sleep(5)
 
-    await asyncio.gather(
-        health_server(),
-        initial_check(supabase, pipeline),
-        periodic_check(supabase, pipeline),
-    )
+# ─── FastAPI 앱 ───────────────────────────────────────────────────────────────
 
+app = FastAPI(title="AI Worker", lifespan=lifespan)
+
+
+@app.get("/health")
+def health():
+    """ECS / ALB 헬스체크 엔드포인트"""
+    return {"status": "ok"}
+
+
+@app.post("/ai/process")
+async def process_emotion(payload: Dict[str, Any], background_tasks: BackgroundTasks):
+    """
+    Next.js가 메모리 저장 후 직접 호출하는 엔드포인트.
+
+    Input — memories 테이블 레코드:
+    {
+        "id": 123,
+        "user_id": "uuid",
+        "emotion_id": 2,
+        "created_at": "2024-01-01T00:00:00Z"
+    }
+
+    Output:
+    { "status": "accepted" }
+
+    처리는 BackgroundTask로 비동기 실행되며,
+    결과(intervention)는 Supabase INSERT를 통해 프론트엔드에 전달됩니다.
+    """
+    if _pipeline is None:
+        return JSONResponse({"error": "worker not ready"}, status_code=503)
+
+    background_tasks.add_task(_pipeline.process_emotion, {"record": payload})
+    return {"status": "accepted"}
+
+
+# ─── 진입점 ───────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        logger.info("\n👋 워커 정상 종료됨")
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")

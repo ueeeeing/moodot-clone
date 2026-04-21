@@ -82,7 +82,8 @@ export function RecentReflections() {
         if (!mounted) return
         setMemories(data)
       } catch {
-        // 기존 동작 유지: 에러 시 빈 목록으로 처리
+        // 실패 시 fetched를 리셋해 onAuthStateChange 재시도를 허용
+        fetched = false
       } finally {
         if (mounted) setIsLoading(false)
       }
