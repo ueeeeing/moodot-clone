@@ -5,8 +5,8 @@
 import os
 from dotenv import load_dotenv
 
-from config import LLMConfig  # ✅ 유지
-from generators import MessageGenerator  # ✅ 유지
+from config import LLMFactory
+from generators import MessageGenerator
 from prompts import EMOTION_NAMES_KR
 
 load_dotenv('.env.local')
@@ -18,7 +18,7 @@ def test_no_recent_record():
     print("🧪 장기간 미기록 메시지 생성 테스트")
     print("=" * 60)
     
-    llm = LLMConfig.create_llm()  # ✅ 유지
+    llm = LLMFactory.create()  # ✅ 유지
     generator = MessageGenerator(llm)
     
     # ✅ 현재 구조에 맞춘 컨텍스트
@@ -48,7 +48,7 @@ def test_negative_pattern_consecutive():
     print("🧪 연속 부정 감정 메시지 생성 테스트")
     print("=" * 60)
     
-    llm = LLMConfig.create_llm()
+    llm = LLMFactory.create()
     generator = MessageGenerator(llm)
     
     # ✅ 연속 부정 감정 (bad, sad)
@@ -76,7 +76,7 @@ def test_negative_pattern_ratio():
     print("🧪 부정 감정 비율 메시지 생성 테스트")
     print("=" * 60)
     
-    llm = LLMConfig.create_llm()
+    llm = LLMFactory.create()
     generator = MessageGenerator(llm)
     
     # ✅ 부정 감정 비율 높음
@@ -111,7 +111,7 @@ def test_positive_reinforcement():
     print("🧪 긍정 강화 메시지 생성 테스트")
     print("=" * 60)
     
-    llm = LLMConfig.create_llm()
+    llm = LLMFactory.create()
     generator = MessageGenerator(llm)
     
     # ✅ 연속 긍정 감정 (good)
@@ -139,7 +139,7 @@ def test_validation():
     print("🧪 메시지 검증 테스트")
     print("=" * 60)
     
-    llm = LLMConfig.create_llm()
+    llm = LLMFactory.create()
     generator = MessageGenerator(llm)
     
     context = {
@@ -180,7 +180,7 @@ def test_forbidden_words():
     print("🧪 금지어 검증 테스트")
     print("=" * 60)
     
-    llm = LLMConfig.create_llm()
+    llm = LLMFactory.create()
     generator = MessageGenerator(llm)
     
     # 금지어가 포함될 가능성이 있는 컨텍스트
@@ -223,7 +223,7 @@ def test_fallback():
     print("🧪 Fallback 메시지 테스트")
     print("=" * 60)
     
-    llm = LLMConfig.create_llm()
+    llm = LLMFactory.create()
     generator = MessageGenerator(llm)
     
     # ✅ 각 이유별 fallback 테스트
@@ -247,7 +247,7 @@ def test_temperature_settings():
     print("🧪 LLM 온도 설정 테스트")
     print("=" * 60)
     
-    llm = LLMConfig.create_llm()
+    llm = LLMFactory.create()
     generator = MessageGenerator(llm)
     
     context = {
@@ -270,7 +270,7 @@ def test_temperature_settings():
 def main():
     """메인 테스트 실행"""
     print("\n🚀 메시지 생성 통합 테스트 시작")
-    print(f"📡 LLM 설정: config.LLMConfig 사용\n")
+    print(f"📡 LLM 설정: LLMFactory.create() 사용\n")
     
     try:
         # 1. 기본 메시지 생성 테스트
