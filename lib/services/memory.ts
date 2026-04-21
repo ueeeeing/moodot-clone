@@ -68,7 +68,6 @@ async function requestJson<T>(input: string, init?: RequestInit): Promise<T> {
   const response = await fetch(input, {
     ...init,
     headers,
-    cache: "no-store",
   })
 
   if (!response.ok) {
