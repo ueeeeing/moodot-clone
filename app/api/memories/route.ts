@@ -104,7 +104,27 @@ export async function POST(request: Request) {
 
     if (error) throw error
 
-    return NextResponse.json({ id: (data as { id: number }).id })
+    const memoryId = (data as { id: number }).id
+
+    // 메모리 저장 후 AI Worker에 직접 처리 요청 (fire-and-forget).
+    // AI_WORKER_URL 미설정 시 AI 처리는 실행되지 않음.
+    const aiWorkerUrl = process.env.AI_WORKER_URL
+    if (aiWorkerUrl) {
+      fetch(`${aiWorkerUrl}/ai/process`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: memoryId,
+          user_id: user.id,
+          emotion_id: input.emotion_id,
+          created_at: new Date().toISOString(),
+        }),
+      }).catch((err) => {
+        console.error("[memories] AI Worker 호출 실패:", err)
+      })
+    }
+
+    return NextResponse.json({ id: memoryId })
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "메모리 저장에 실패했습니다."
