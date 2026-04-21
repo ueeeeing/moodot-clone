@@ -33,15 +33,18 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           MEMORY_TEXT_ENCRYPTION_KEY: ${{ secrets.MEMORY_TEXT_ENCRYPTION_KEY }}
 
-  push-ai-worker:
+  ai-worker-docker:
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Build AI Worker image
+        run: docker build -t ai-worker:local -f service/Dockerfile service
+
       - name: Configure AWS credentials
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -49,15 +52,15 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Login to Amazon ECR
-        id: login-ecr
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build and push AI Worker image
+      - name: Push to ECR
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         env:
           REGISTRY: ${{ secrets.ECR_REGISTRY }}
           REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
           IMAGE_TAG: sha-${{ github.sha }}
         run: |
-          docker build -t $REGISTRY/$REPOSITORY:$IMAGE_TAG \
-                       -f service/Dockerfile service
+          docker tag ai-worker:local $REGISTRY/$REPOSITORY:$IMAGE_TAG
           docker push $REGISTRY/$REPOSITORY:$IMAGE_TAG
