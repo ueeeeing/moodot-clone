@@ -94,8 +94,6 @@ export function AIInsight() {
 
   // 초기 로드
   useEffect(() => {
-    const supabase = getSupabaseBrowserClient()
-
     getLatestPendingIntervention().then((data) => {
       if (data) {
         setIntervention(data)
@@ -103,22 +101,11 @@ export function AIInsight() {
       }
     })
 
-    // 최근 기록이 미처리 상태면 생각중
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return
-      supabase.from("memories")
-        .select("processed")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .then(({ data }) => {
-          if (data?.[0]?.processed === false) setAiState("thinking")
-        })
-    })
-
     getRecentMemories(1)
       .then((memories) => {
-        setLatestEmotionId(memories[0]?.emotion_id ?? null)
+        const latest = memories[0]
+        setLatestEmotionId(latest?.emotion_id ?? null)
+        if (latest?.processed === false) setAiState("thinking")
       })
       .catch(() => {
         setLatestEmotionId(null)
