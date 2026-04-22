@@ -61,3 +61,4 @@ terraform/ecs/.terraform.lock.hcl
 terraform/ecs/terraform.tfvars
 terraform/ecs/*.tfstate
 terraform/ecs/*.tfstate.backup
+terraform/ecs/tfplan
