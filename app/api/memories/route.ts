@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
 
     console.log(`[perf][memories/list] total: ${Date.now() - t0}ms`)
     return NextResponse.json(rows, {
-      headers: { "Cache-Control": "private, max-age=30" },
+      headers: { "Cache-Control": "no-store" },
     })
   } catch (error) {
     const message =

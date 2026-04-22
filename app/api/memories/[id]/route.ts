@@ -82,7 +82,7 @@ export async function GET(
 
     console.log(`[perf][memories/detail] total: ${Date.now() - t0}ms`)
     return NextResponse.json(row, {
-      headers: { "Cache-Control": "private, max-age=30" },
+      headers: { "Cache-Control": "no-store" },
     })
   } catch (error) {
     const message =
