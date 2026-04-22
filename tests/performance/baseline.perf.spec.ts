@@ -23,7 +23,10 @@ test.describe("public baseline", () => {
         async (p) => {
           await p.goto("/")
           await p.waitForLoadState("networkidle", { timeout: 20_000 })
-          await p.waitForSelector("text=New Memory", { timeout: 15_000 })
+          // WelcomeHeader의 고정 텍스트 — SSR로 즉시 렌더됨
+        await p.waitForSelector("text=오늘 기분은 어떤가요?", { timeout: 15_000 })
+        // JournalEntry의 저장 버튼 — 클라이언트 하이드레이션 완료 기준
+        await p.waitForSelector("text=기록 저장하기", { timeout: 15_000 })
         },
         REPEAT,
         { group: "public" },
