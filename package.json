@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:memory-archives": "vitest run tests/memory-archives"
+    "test:memory-archives": "vitest run tests/memory-archives",
+    "test:perf": "node --env-file=tests/performance/.env.local node_modules/.bin/playwright test --config tests/performance/playwright.perf.config.ts",
+    "test:perf:setup": "node --env-file=tests/performance/.env.local node_modules/.bin/playwright test --config tests/performance/setup/playwright.setup.config.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -49,6 +51,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4.2.2",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",

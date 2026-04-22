@@ -55,6 +55,10 @@ service/docs/
 **/*.pyc
 
 
+# Performance test results & auth state (개인 세션 포함, 절대 커밋 금지)
+tests/performance/results/
+tests/performance/.auth/
+
 # Terraform
 terraform/ecs/.terraform/
 terraform/ecs/.terraform.lock.hcl
