@@ -143,6 +143,16 @@ resource "aws_ecs_service" "ai_worker" {
     assign_public_ip = true  # ALB 없이 직접 접근하므로 필수
   }
 
+  # 새 task가 연속 실패하면 ECS가 직전 성공한 Task Definition으로 자동 복구
+  deployment_circuit_breaker {
+    enable   = true
+    rollback = true
+  }
+
+  deployment_controller {
+    type = "ECS"
+  }
+
   # task definition이 변경되어도 Terraform이 강제로 재배포하지 않도록 설정
   # CI/CD에서 직접 배포하는 경우 유용
   lifecycle {

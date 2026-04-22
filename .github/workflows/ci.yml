@@ -64,3 +64,73 @@ jobs:
         run: |
           docker tag ai-worker:local $REGISTRY/$REPOSITORY:$IMAGE_TAG
           docker push $REGISTRY/$REPOSITORY:$IMAGE_TAG
+
+      - name: Save current Task Definition ARN (rollback 대비)
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        id: current-task
+        env:
+          CLUSTER: ${{ secrets.ECS_CLUSTER }}
+          SERVICE: ${{ secrets.ECS_SERVICE }}
+        run: |
+          ARN=$(aws ecs describe-services \
+            --cluster $CLUSTER \
+            --services $SERVICE \
+            --query 'services[0].taskDefinition' \
+            --output text)
+          echo "arn=$ARN" >> $GITHUB_OUTPUT
+
+      - name: Deploy to ECS
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        env:
+          REGISTRY: ${{ secrets.ECR_REGISTRY }}
+          REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+          IMAGE_TAG: sha-${{ github.sha }}
+          CLUSTER: ${{ secrets.ECS_CLUSTER }}
+          SERVICE: ${{ secrets.ECS_SERVICE }}
+          TASK_FAMILY: ${{ secrets.ECS_TASK_FAMILY }}
+        run: |
+          # 현재 Task Definition에서 이미지만 새 태그로 교체해 새 revision 등록
+          TASK_DEF=$(aws ecs describe-task-definition \
+            --task-definition $TASK_FAMILY \
+            --query taskDefinition)
+
+          NEW_TASK_DEF=$(echo $TASK_DEF | jq \
+            --arg IMAGE "$REGISTRY/$REPOSITORY:$IMAGE_TAG" \
+            '.containerDefinitions[0].image = $IMAGE
+             | del(.taskDefinitionArn, .revision, .status,
+                   .requiresAttributes, .compatibilities,
+                   .registeredAt, .registeredBy)')
+
+          NEW_REVISION=$(aws ecs register-task-definition \
+            --cli-input-json "$NEW_TASK_DEF" \
+            --query taskDefinition.taskDefinitionArn \
+            --output text)
+
+          aws ecs update-service \
+            --cluster $CLUSTER \
+            --service $SERVICE \
+            --task-definition $NEW_REVISION
+
+      - name: Wait for deployment to stabilize
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        env:
+          CLUSTER: ${{ secrets.ECS_CLUSTER }}
+          SERVICE: ${{ secrets.ECS_SERVICE }}
+        run: |
+          aws ecs wait services-stable \
+            --cluster $CLUSTER \
+            --services $SERVICE
+        timeout-minutes: 10
+
+      - name: Rollback on failure
+        if: failure() && github.ref == 'refs/heads/main' && github.event_name == 'push'
+        env:
+          CLUSTER: ${{ secrets.ECS_CLUSTER }}
+          SERVICE: ${{ secrets.ECS_SERVICE }}
+          PREV_TASK_ARN: ${{ steps.current-task.outputs.arn }}
+        run: |
+          echo "배포 실패 — $PREV_TASK_ARN 으로 롤백합니다"
+          aws ecs update-service \
+            --cluster $CLUSTER \
+            --service $SERVICE \
+            --task-definition $PREV_TASK_ARN
