@@ -54,3 +54,10 @@ service/docs/
 **/__pycache__/
 **/*.pyc
 
+
+# Terraform
+terraform/ecs/.terraform/
+terraform/ecs/.terraform.lock.hcl
+terraform/ecs/terraform.tfvars
+terraform/ecs/*.tfstate
+terraform/ecs/*.tfstate.backup

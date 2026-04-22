@@ -1,0 +1,37 @@
+# terraform.tfvars.example
+# 이 파일을 복사해서 terraform.tfvars로 만든 뒤 값을 채우세요.
+# terraform.tfvars는 .gitignore에 의해 커밋되지 않습니다.
+#
+#   cp terraform.tfvars.example terraform.tfvars
+
+aws_region = "ap-southeast-1"
+project    = "moodot"
+
+# ✏️ AWS 콘솔 → VPC → 본인 VPC ID
+vpc_id = "vpc-xxxxxxxxxxxxxxxxx"
+
+# ✏️ AWS 콘솔 → VPC → Subnets → public subnet 2개 이상 권장
+public_subnet_ids = [
+  "subnet-xxxxxxxxxxxxxxxxx",
+  "subnet-yyyyyyyyyyyyyyyyy",
+]
+
+# ✏️ ECR 콘솔 → 리포지토리 → 이미지 URI 복사
+ecr_image_uri = "123456789012.dkr.ecr.ap-southeast-1.amazonaws.com/moodot-ai-worker:sha-xxxxxxx"
+
+# ECS 사양
+task_cpu    = 256
+task_memory = 512
+
+# 0 = 서비스 중단 (비용 없음), 1 = 실행
+desired_count = 1
+
+# LLM
+llm_provider = "openai"
+openai_model = "gpt-4o-mini"
+
+# ✏️ 민감 값 — 아래 값들은 절대 git에 올리지 마세요
+openai_api_key             = "sk-..."
+supabase_url               = "https://xxxxxxxxxxxx.supabase.co"
+supabase_service_key       = "eyJ..."
+memory_text_encryption_key = "your-32-byte-key"
