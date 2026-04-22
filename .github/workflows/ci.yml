@@ -41,7 +41,11 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Build AI Worker image
-        run: docker build -t ai-worker:local -f service/Dockerfile service
+        run: |
+          docker build \
+            --build-arg COMMIT_SHA=${{ github.sha }} \
+            -t ai-worker:local \
+            -f service/Dockerfile service
 
       - name: Configure AWS credentials
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'

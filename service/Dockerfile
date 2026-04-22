@@ -1,5 +1,8 @@
 FROM python:3.11-slim
 
+ARG COMMIT_SHA=unknown
+ENV COMMIT_SHA=${COMMIT_SHA}
+
 WORKDIR /app
 
 # 의존성만 먼저 복사 → 레이어 캐시 활용

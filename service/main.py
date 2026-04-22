@@ -73,7 +73,7 @@ app = FastAPI(title="AI Worker", lifespan=lifespan)
 @app.get("/health")
 def health():
     """ECS / ALB 헬스체크 엔드포인트"""
-    return {"status": "ok"}
+    return {"status": "ok", "version": os.getenv("COMMIT_SHA", "unknown")}
 
 
 @app.post("/ai/process")
