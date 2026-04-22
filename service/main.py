@@ -72,8 +72,8 @@ app = FastAPI(title="AI Worker", lifespan=lifespan)
 
 @app.get("/health")
 def health():
-    """ECS / ALB 헬스체크 엔드포인트"""
-    return {"status": "ok", "version": os.getenv("COMMIT_SHA", "unknown")}
+    """ECS / ALB 헬스체크 엔드포인트 — 롤백 테스트용: 항상 500 반환"""
+    return JSONResponse({"status": "unhealthy"}, status_code=500)
 
 
 @app.post("/ai/process")
