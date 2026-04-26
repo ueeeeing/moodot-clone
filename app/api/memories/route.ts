@@ -39,9 +39,10 @@ export async function GET(request: NextRequest) {
 
     const t2 = Date.now()
     const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    console.log(`[perf][memories/list] auth.getUser: ${Date.now() - t2}ms`)
+      data: { session },
+    } = await supabase.auth.getSession()
+    const user = session?.user ?? null
+    console.log(`[perf][memories/list] auth.getSession: ${Date.now() - t2}ms`)
 
     const limitParam = request.nextUrl.searchParams.get("limit")
     const offsetParam = request.nextUrl.searchParams.get("offset")
@@ -89,8 +90,9 @@ export async function POST(request: Request) {
     const input = (await request.json()) as CreateMemoryInput
     const supabase = await getSupabaseServerClient()
     const {
-      data: { user },
-    } = await supabase.auth.getUser()
+      data: { session },
+    } = await supabase.auth.getSession()
+    const user = session?.user ?? null
 
     if (!user) {
       return jsonError("인증이 필요합니다.", 401)
