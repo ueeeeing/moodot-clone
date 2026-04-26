@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
 
     const t4 = Date.now()
     const rows = ((data ?? []) as MemoryDbRow[]).map(toPublicMemoryRow)
-    console.log(`[perf][memories/list] decrypt: ${Date.now() - t4}ms`)
+    console.log(`[perf][memories/list] decrypt: ${Date.now() - t4}ms rows=${rows.length}`)
 
     console.log(`[perf][memories/list] total: ${Date.now() - t0}ms`)
     return NextResponse.json(rows, {

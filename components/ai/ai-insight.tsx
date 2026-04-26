@@ -101,7 +101,7 @@ export function AIInsight() {
       }
     })
 
-    getRecentMemories(1)
+    getRecentMemories(2)
       .then((memories) => {
         const latest = memories[0]
         setLatestEmotionId(latest?.emotion_id ?? null)

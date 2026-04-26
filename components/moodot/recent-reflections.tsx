@@ -89,9 +89,9 @@ export function RecentReflections() {
       }
     }
 
-    // 이미 세션이 있으면 즉시 fetch
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) void doFetch()
+    // 이미 세션이 있으면 즉시 fetch (getSession은 로컬 캐시 읽기, 네트워크 없음)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) void doFetch()
     })
 
     // 세션 없을 때 AuthInit의 signInAnonymously 완료를 감지해 fetch

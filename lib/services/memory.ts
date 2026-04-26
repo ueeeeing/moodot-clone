@@ -93,10 +93,21 @@ export async function getMemories(limit?: number, offset?: number): Promise<Memo
   return requestJson<MemoryRow[]>("/api/memories")
 }
 
-/** 최신 N개 (memory_at 내림차순). 에러 시 throw. */
-export async function getRecentMemories(limit: number): Promise<MemoryRow[]> {
+const _recentMemoriesInflight = new Map<string, Promise<MemoryRow[]>>()
+
+/** 최신 N개 (memory_at 내림차순). 동일 limit의 동시 호출은 하나의 요청으로 합산. 에러 시 throw. */
+export function getRecentMemories(limit: number): Promise<MemoryRow[]> {
   const params = new URLSearchParams({ limit: String(limit) })
-  return requestJson<MemoryRow[]>(`/api/memories?${params.toString()}`)
+  const url = `/api/memories?${params.toString()}`
+
+  const inflight = _recentMemoriesInflight.get(url)
+  if (inflight) return inflight
+
+  const promise = requestJson<MemoryRow[]>(url).finally(() => {
+    _recentMemoriesInflight.delete(url)
+  })
+  _recentMemoriesInflight.set(url, promise)
+  return promise
 }
 
 /** 단건 조회. 에러 시 throw. */
