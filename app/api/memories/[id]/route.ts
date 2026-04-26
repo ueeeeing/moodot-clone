@@ -52,9 +52,10 @@ export async function GET(
 
     const t2 = Date.now()
     const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    console.log(`[perf][memories/detail] auth.getUser: ${Date.now() - t2}ms`)
+      data: { session },
+    } = await supabase.auth.getSession()
+    const user = session?.user ?? null
+    console.log(`[perf][memories/detail] auth.getSession: ${Date.now() - t2}ms`)
 
     if (!user) {
       return jsonError("인증이 필요합니다.", 401)
@@ -106,8 +107,9 @@ export async function PATCH(
     const input = (await request.json()) as UpdateMemoryInput
     const supabase = await getSupabaseServerClient()
     const {
-      data: { user },
-    } = await supabase.auth.getUser()
+      data: { session },
+    } = await supabase.auth.getSession()
+    const user = session?.user ?? null
 
     if (!user) {
       return jsonError("인증이 필요합니다.", 401)
